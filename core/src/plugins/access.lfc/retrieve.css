@@ -1,0 +1,153 @@
+body {
+	background-color: #FFFFFF;
+	text-align: center;
+	color: #000000;
+	text-align: left;
+	background: url("https://halfback.cnaf.infn.it/images/overlay2.png") repeat;
+	margin-top: 28px;
+}
+
+.head {
+	
+	border-left-width: 2px;
+	border-right-width: 2px;
+	border-top-width: 2px;
+	border-bottom-width: 2px;
+	border-color: #000000;
+	border-style: solid;
+	background-color: #ee0000;
+	padding-left: .75em;
+	padding-right: .75em;
+	padding-top: .5em;
+	padding-bottom: .5em;
+	color: white;
+	margin-left: -22px;
+	margin-right: -22px;
+	margin-top: -22px;
+}
+
+div.container{
+	background-color: #FFFFFF;
+	width: 840px;
+    margin: auto;
+    padding:20px;
+    border-color: black;
+    border-radius: 10px;
+    border-style: solid;
+    border-width: 5px;	
+}
+
+
+div.loginbox {
+    background-color: #FFFFFF;
+    position: relative;
+    width: 840px;
+    height: 200px;
+    margin: 30px auto;
+}
+
+div.loginbox div.leftpane {
+    border: 2px #000000 solid;
+    border-radius: 10px;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 47%;
+    height: 90%;
+}
+
+div.loginbox div.rightpane {
+	border: 2px #000000 solid;
+    border-radius: 10px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 47%;
+    height: 90%;
+    overflow: hidden;
+    text-align: center;
+}
+
+div.loginbox div.content{
+    padding-top: 5px;
+    padding-left: 7px;
+    padding-right: 7px;
+    margin:auto;
+}
+
+div.loginbox #splogo{
+}
+
+
+div.loginbox #clippedsplogoX {
+    width: 350px;
+}
+
+div.loginbox #clippedsplogoY {
+    height: 147px;
+}
+
+div.loginbox #spName{
+    padding-top:5px;
+    padding-bottom:5px;
+    font-size:1.2em;
+}
+
+div.loginbox #spDescription{
+    padding-top:15px;
+    text-align:left;
+}
+
+.footer {
+	
+	border-left-width: 2px;
+	border-right-width: 2px;
+	border-top-width: 2px;
+	border-bottom-width: 2px;
+	border-color: #000000;
+	border-style: solid;
+	background-color: #FFFFFF;
+	padding-left: .75em;
+	padding-right: .75em;
+	padding-top: .5em;
+	padding-bottom: .5em;
+	margin-left: -22px;
+	margin-right: -22px;
+	margin-bottom: -22px;
+	
+}
+
+.logo {
+	text-align: center;
+	margin-top: 1.5em;
+}
+
+.button {
+	background:#5CCD00;
+	background:-moz-linear-gradient(top,#5CCD00 0%,#4AA400 100%);
+	background:-webkit-gradient(linear,left top,left bottom,color-stop(0%,#5CCD00),color-stop(100%,#4AA400));
+	background:-webkit-linear-gradient(top,#5CCD00 0%,#4AA400 100%);
+	background:-o-linear-gradient(top,#5CCD00 0%,#4AA400 100%);
+	background:-ms-linear-gradient(top,#5CCD00 0%,#4AA400 100%);
+	background:linear-gradient(top,#5CCD00 0%,#4AA400 100%);
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#5CCD00',endColorstr='#4AA400',GradientType=0);
+	padding:10px 15px;
+	color:#fff;
+	font-family:'Helvetica Neue',sans-serif;
+	font-size:16px;
+	border-radius:5px;
+	-moz-border-radius:5px;
+	-webkit-border-radius:5px;
+	border:1px solid #459A00
+}
+
+.button2:hover {
+cursor: pointer;
+}
+
+/*
+div.loginbox button, div {
+	height: 46px;
+	width: 80%;
+}
+*/
