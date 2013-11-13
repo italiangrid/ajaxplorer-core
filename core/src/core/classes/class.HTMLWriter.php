@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -99,6 +99,21 @@ class HTMLWriter
     	}
     	echo "MessageHash;";
     	echo "</script>\n";
+    }
+
+    /**
+     * Send a simple Content-type header
+     * @static
+     * @param string $type
+     * @param string $charset
+     * @return void
+     */
+    static function internetExplorerMainDocumentHeader(){
+        if(strstr($_SERVER["HTTP_USER_AGENT"], "MSIE 9.")){
+            header("X-UA-Compatible: IE=9");
+        }else if(strstr($_SERVER["HTTP_USER_AGENT"], "MSIE 10.")){
+            header("X-UA-Compatible: IE=Edge,chrome=1");
+        }
     }
 
     /**

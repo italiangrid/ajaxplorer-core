@@ -1,25 +1,25 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
- * The godzilla of AjaXplorer, should be split in smaller pieces.. 
+ * The godzilla of Pydio, should be split in smaller pieces..
  * This grid displays either a table of rows or a grid of thumbnail.
  */
 Class.create("FilesList", SelectableElements, {
@@ -472,7 +472,7 @@ Class.create("FilesList", SelectableElements, {
 		var subMenuItems1 = {
 			staticItems:[
                 {text:226,title:227,src:'view_text.png',icon_class:'icon-table',command:'list',hasAccessKey:true,accessKey:'list_access_key'},
-                {text:460,title:461,src:'view_detail.png',icon_class:'icon-th-list',command:'detail',hasAccessKey:true,accessKey:'detail_access_key'},
+                {text:460,title:461,src:'view_list_details.png',icon_class:'icon-th-list',command:'detail',hasAccessKey:true,accessKey:'detail_access_key'},
                 {text:228,title:229,src:'view_icon.png',icon_class:'icon-th',command:'thumb',hasAccessKey:true,accessKey:'thumbs_access_key'}
             ]
 		};
@@ -690,7 +690,13 @@ Class.create("FilesList", SelectableElements, {
 			}.bind(this);
 			if(this.paginationData && this.paginationData.get('remote_order') && parseInt(this.paginationData.get('total')) > 1){
 				this._sortableTable.setPaginationBehaviour(function(params){
-					this.reload(params);
+                    this.getCurrentContextNode().getMetadata().set("remote_order", params);
+                    var oThis = this;
+                    this.crtContext.observeOnce("loaded", function(){
+                        oThis.crtContext = this ;
+                        oThis.fill(oThis.crtContext);
+                    });
+                    this.getCurrentContextNode().reload();
 				}.bind(this), this.columnsDef, this.paginationData.get('currentOrderCol')||-1, this.paginationData.get('currentOrderDir') );
 			}
 			this.disableTextSelection(this.htmlElement.down('div.sort-table'), true);
@@ -1137,7 +1143,9 @@ Class.create("FilesList", SelectableElements, {
                 item.ajxpNode = null;
                 delete item;
                 newItem.REPLACE_OBS = this.makeItemRefreshObserver(ajxpNode, newItem, renderer);
+                newItem.REMOVE_OBS = this.makeItemRemovedObserver(ajxpNode, newItem);
                 ajxpNode.observe("node_replaced", newItem.REPLACE_OBS);
+                ajxpNode.observe("node_removed", newItem.REMOVE_OBS);
                 var dm = (this._dataModel?this._dataModel:ajaxplorer.getContextHolder());
                 if(dm.getSelectedNodes() && dm.getSelectedNodes().length)
                 {
@@ -1279,10 +1287,73 @@ Class.create("FilesList", SelectableElements, {
 		}
 		
 		// NOW PARSE LINES
-		this.parsingCache = new Hash();		
+		this.clearParsingCache();
 		var children = contextNode.getChildren();
         var renderer = this.getRenderer();// (this._displayMode == "list"?this.ajxpNodeToTableRow.bind(this):this.ajxpNodeToDiv.bind(this));
-		for (var i = 0; i < children.length ; i++) 
+        
+                //////////////// MODIFICATO DA NOI ////////////////////
+
+		var start_number = 0;	
+
+		var rep_ID = ajaxplorer.user.getActiveRepository();
+		if(this.paginationData && rep_ID==repo_code){
+			var current1 = parseInt(this.paginationData.get('current'));
+			//current1=numero pagina corrente
+			var total1 = parseInt(this.paginationData.get('total'));
+			//total1=numero totale pagina
+			var count1 = parseInt(this.paginationData.get('count'));
+			//numero totale file + cartelle
+			var limitPerPage = parseInt(this.paginationData.get('limitPerPage'));
+			//massimo limite impostato
+			var position = parseInt(this.paginationData.get('position'));
+			var length = parseInt(this.paginationData.get('length'));
+			//numero cartelle in quella pagina
+			var folders = parseInt(this.paginationData.get('folders'));
+			//numero cartelle in totale
+						
+			if(current1==total1){
+				var n = count1-((total1-1)*limitPerPage) + folders - length;
+//				alert("n is "+n);
+			} else {
+				var n = limitPerPage + folders - length;
+				
+			}
+
+//alert("position is "+position);
+//alert("length is "+length);
+			
+			for (var z = position; z < position+length ; z++)
+			{
+				var child = children[z];
+				var newItem;
+				if(this._displayMode == "list") {
+					newItem = this.ajxpNodeToTableRow(child);
+				}else {
+					newItem = this.ajxpNodeToDiv(child);
+				}
+				newItem.ajxpNode = child;
+	        	        newItem.addClassName("ajxpNodeProvider");
+			}
+//alert("z alla fine del ciclo is "+z);
+			
+			var start_for = folders;
+//			var end_for = n; 
+			var end_for = children.length;
+		} else {
+			var start_for = 0;
+			var end_for = children.length; 
+		}
+
+//alert("start_for is "+start_for);
+//alert("end_for is "+end_for);
+		
+		for (var i = start_for; i < end_for ; i++)
+
+//////////////// FINE MODIFICA ////////////////////
+        
+        
+//		for (var i = 0; i < children.length ; i++) 
+
 		{
 			var child = children[i];
 			var newItem;
@@ -1335,31 +1406,31 @@ Class.create("FilesList", SelectableElements, {
 		var item = sel[0]; // We assume this action was triggered with a single-selection active.
 		var offset = {top:0,left:0};
 		var scrollTop = 0;
-        var addStyle = {};
-		if(this._displayMode == "list"){
-			var span = item.select('span.text_label')[0];
-			var posSpan = item.select('span.list_selectable_span')[0];
-			offset.top=1;
-			offset.left=20;
-			scrollTop = this.htmlElement.down('div.table_rows_container').scrollTop;
-		}else if(this._displayMode == "thumb"){
-			var span = item.select('div.thumbLabel')[0];
-			var posSpan = span;
-			offset.top=2;
-			offset.left=3;
-			scrollTop = this.htmlElement.down('.selectable_div').scrollTop;
-		}else if(this._displayMode == "detail"){
-			var span = item.select('div.thumbLabel')[0];
-			var posSpan = span;
-			offset.top=5;
-			offset.left= this._detailThumbSize + 25;
-			scrollTop = this.htmlElement.down('.selectable_div').scrollTop;
+        var addStyle = {fontSize: '12px'};
+        if(this._displayMode == "list"){
+            var span = item.select('span.text_label')[0];
+            var posSpan = item.select('span.list_selectable_span')[0];
+            offset.top=-3;
+            offset.left=25;
+            scrollTop = this.htmlElement.down('div.table_rows_container').scrollTop;
+        }else if(this._displayMode == "thumb"){
+            var span = item.select('div.thumbLabel')[0];
+            var posSpan = span;
+            offset.top=-2;
+            offset.left=3;
+            scrollTop = this.htmlElement.down('.selectable_div').scrollTop;
+        }else if(this._displayMode == "detail"){
+            var span = item.select('div.thumbLabel')[0];
+            var posSpan = span;
+            offset.top=0;
+            offset.left= 0;
+            scrollTop = this.htmlElement.down('.selectable_div').scrollTop;
             addStyle = {
                 fontSize : '20px',
                 paddingLeft: '2px',
                 color: 'rgb(111, 121, 131)'
             };
-		}
+        }
 		var pos = posSpan.cumulativeOffset();
 		var text = span.innerHTML;
 		var edit = new Element('input', {value:item.ajxpNode.getLabel('text'), id:'editbox'}).setStyle({
@@ -1436,7 +1507,7 @@ Class.create("FilesList", SelectableElements, {
 			width:'46px',
 			zIndex:2500,
 			left:(pos.left+offset.left+origWidth)+'px',
-			top:((pos.top+offset.top-scrollTop)-1)+'px'
+			top:((pos.top+offset.top-scrollTop)+1)+'px'
 		});
 		var closeFunc = function(){
 			span.setStyle({color:''});
@@ -1447,6 +1518,52 @@ Class.create("FilesList", SelectableElements, {
 		modal.setCloseAction(closeFunc);
 	},
 	
+    getFromCache:function(cacheKey){
+        var result;
+        if(!this.parsingCache.get(cacheKey)){
+            result = $H();
+            var columns;
+            switch(cacheKey){
+                case "visibleColumns":
+                    columns = this.getVisibleColumns();
+                    break;
+                case "hiddenColumns":
+                    columns = $A();
+                    var hColumns = this.hiddenColumns;
+                    hColumns.each(function(colName){
+                        var colObject = this.columnsDef.detect(function(element){
+                            return (element.attributeName == colName);
+                        });
+                        if(colObject) columns.push(colObject);
+                    }.bind(this));
+                    break;
+                case "tBody":
+                    var tBody = $(this._htmlElement).down("tbody");
+                    this.parsingCache.set('tBody', tBody);
+                    return tBody;
+                default :
+                    columns = this.getColumnsDef();
+                    break;
+            }
+            columns.each(function(column){
+                if(column.modifier && !column.modifierFunc) {
+                    try{
+                        column.modifierFunc = eval(column.modifier);
+                    }catch (e){}
+                }
+                result.set(column.attributeName, column);
+            });
+            this.parsingCache.set(cacheKey, result);
+        }else{
+            result = this.parsingCache.get(cacheKey);
+        }
+        return result;
+    },
+
+    clearParsingCache: function(){
+        this.parsingCache = new $H();
+    },
+
 	/**
 	 * Populate a node as a TR element
 	 * @param ajxpNode AjxpNode
@@ -1456,25 +1573,15 @@ Class.create("FilesList", SelectableElements, {
 	ajxpNodeToTableRow: function(ajxpNode, replaceItem){
 		var metaData = ajxpNode.getMetadata();
 		var newRow = new Element("tr", {id:slugString(ajxpNode.getPath())});
-		var tBody = this.parsingCache.get('tBody') || $(this._htmlElement).select("tbody")[0];
-		this.parsingCache.set('tBody', tBody);
+		var tBody = this.getFromCache('tBody');
+
 		metaData.each(function(pair){
 			//newRow.setAttribute(pair.key, pair.value);
 			if(Prototype.Browser.IE && pair.key == "ID"){
 				newRow.setAttribute("ajxp_sql_"+pair.key, pair.value);
 			}			
 		});
-		var attributeList;
-		if(!this.parsingCache.get('attributeList')){
-			attributeList = $H();
-			var visibleColumns = this.getVisibleColumns();
-			visibleColumns.each(function(column){
-				attributeList.set(column.attributeName, column);
-			});
-			this.parsingCache.set('attributeList', attributeList);
-		}else{
-			attributeList = this.parsingCache.get('attributeList');
-		}
+		var attributeList = this.getFromCache("visibleColumns");
 		var attKeys = attributeList.keys();
 		for(var i = 0; i<attKeys.length;i++ ){
 			var s = attKeys[i];			
@@ -1579,31 +1686,17 @@ Class.create("FilesList", SelectableElements, {
 				tableCell.addClassName("resizer_"+i);
 			}
 			newRow.appendChild(tableCell);
-			if(attributeList.get(s).modifier){
-				var modifier = eval(attributeList.get(s).modifier);
-				modifier(tableCell, ajxpNode, 'row');
+			if(attributeList.get(s).modifierFunc){
+                attributeList.get(s).modifierFunc(tableCell, ajxpNode, 'row', attributeList.get(s));
 			}
 		}
-        // test hidden modifiers
-        var hiddenModifiers = $A();
-        if(this.parsingCache.get("hiddenModifiers")){
-            hiddenModifiers = this.parsingCache.get("hiddenModifiers");
-        }else{
-            this.hiddenColumns.each(function(col){
-                try{
-                    this.columnsDef.each(function(colDef){
-                        if(colDef.attributeName == col && colDef.modifier){
-                           var mod = eval(colDef.modifier);
-                           hiddenModifiers.push(mod);
+
+        this.getFromCache('hiddenColumns').each(function(pair){
+            if(pair.value.modifierFunc){
+                pair.value.modifierFunc(null,ajxpNode,'row', pair.value, newRow);
                         }
                     });
-                }catch(e){}
-            }.bind(this) );
-            this.parsingCache.set("hiddenModifiers", hiddenModifiers);
-        }
-        hiddenModifiers.each(function(mod){
-            mod(null,ajxpNode,'row', newRow);
-        });
+
 		tBody.appendChild(newRow);
         if(!replaceItem){
             if(this.even){
@@ -1676,23 +1769,11 @@ Class.create("FilesList", SelectableElements, {
 
 		this._htmlElement.insert(newRow);
 			
-		var modifiers ;
-		if(!this.parsingCache.get('modifiers')){
-			modifiers = $A();
-			this.columnsDef.each(function(column){
-				if(column.modifier){
-					try{
-						modifiers.push(eval(column.modifier));
-					}catch(e){}
+        this.getFromCache("columns").each(function(pair){
+            if(pair.value.modifierFunc){
+                pair.value.modifierFunc(newRow, ajxpNode, 'thumb', pair.value);
 				}
 			});
-			this.parsingCache.set('modifiers', modifiers);			
-		}else{
-			modifiers = this.parsingCache.get('modifiers');
-		}
-		modifiers.each(function(el){
-			el(newRow, ajxpNode, 'thumb');
-		});
 
         this._previewFactory.enrichBasePreview(ajxpNode, newRow);
 		
@@ -1781,17 +1862,8 @@ Class.create("FilesList", SelectableElements, {
         largeRow.insert(label);
         largeRow.insert(metadataDiv);
 
-        var attributeList;
-        if(!this.parsingCache.get('attributeList')){
-            attributeList = $H();
-            var visibleColumns = this.getVisibleColumns();
-            visibleColumns.each(function(column){
-                attributeList.set(column.attributeName, column);
-            });
-            this.parsingCache.set('attributeList', attributeList);
-        }else{
-            attributeList = this.parsingCache.get('attributeList');
-        }
+        var attributeList = this.getFromCache('visibleColumns');
+
         var first = false;
         var attKeys = attributeList.keys();
         for(var i = 0; i<attKeys.length;i++ ){
@@ -1820,33 +1892,19 @@ Class.create("FilesList", SelectableElements, {
             }
             metadataDiv.insert(cell);
             first = false;
-            if(attributeList.get(s).modifier){
-                var modifier = eval(attributeList.get(s).modifier);
-                modifier(cell, ajxpNode, 'row');
+            if(attributeList.get(s).modifierFunc){
+                attributeList.get(s).modifierFunc(cell, ajxpNode, 'detail', attributeList.get(s));
             }
         }
 
         this._htmlElement.insert(largeRow);
 
-
-
-		var modifiers ;
-		if(!this.parsingCache.get('modifiers')){
-			modifiers = $A();
-			this.columnsDef.each(function(column){
-				if(column.modifier){
-					try{
-						modifiers.push(eval(column.modifier));
-					}catch(e){}
+        this.getFromCache("columns").each(function(pair){
+            if(pair.value.modifierFunc){
+                pair.value.modifierFunc(newRow, ajxpNode, 'detail', pair.value);
 				}
 			});
-			this.parsingCache.set('modifiers', modifiers);
-		}else{
-			modifiers = this.parsingCache.get('modifiers');
-		}
-		modifiers.each(function(el){
-			el(newRow, ajxpNode, 'thumb');
-		});
+
 
         this._previewFactory.enrichBasePreview(ajxpNode, newRow);
 
@@ -1902,7 +1960,7 @@ Class.create("FilesList", SelectableElements, {
         }
     },
 
-	partSizeCellRenderer : function(element, ajxpNode, type){
+	partSizeCellRenderer : function(element, ajxpNode, type, metadataDef){
         if(!element) return;
 		element.setAttribute("data-sorter_value", ajxpNode.getMetadata().get("bytesize"));
 		if(!ajxpNode.getMetadata().get("target_bytesize")){
@@ -1983,6 +2041,7 @@ Class.create("FilesList", SelectableElements, {
 		var elList;
 		if(one_element) elList = [one_element]; 
 		else elList = this._htmlElement.select('div.thumbnail_selectable_cell');
+        var ellipsisDetected;
 		elList.each(function(element){
             if(element.up('div.thumbnail_selectable_cell.detailed')) return;
 			var node = element.ajxpNode;
@@ -1999,7 +2058,10 @@ Class.create("FilesList", SelectableElements, {
             if(image_element){
                 this._previewFactory.resizeThumbnail(image_element);
             }
-            if(label_element){
+            if(ellipsisDetected == undefined){
+                ellipsisDetected = label_element.getStyle('textOverflow') == "ellipsis";
+            }
+            if(label_element && !ellipsisDetected){
                 // RESIZE LABEL
                 var el_width = (!elementsAreSiblings ? (element.getWidth() - tSize - 10)  : (tSize + 25) ) ;
                 var charRatio = 6;

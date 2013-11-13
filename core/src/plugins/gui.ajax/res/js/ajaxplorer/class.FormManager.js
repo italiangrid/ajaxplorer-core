@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -60,7 +60,7 @@ Class.create("FormManager", {
 		return paramsHash;
 	},
 	
-	createParametersInputs : function(form, parametersDefinitions, showTip, values, disabled, skipAccordion, addFieldCheckbox){
+	createParametersInputs : function(form, parametersDefinitions, showTip, values, disabled, skipAccordion, addFieldCheckbox, startAccordionClosed){
         var b=document.body;
         var groupDivs = $H({});
         var replicableGroups = $H({});
@@ -111,11 +111,17 @@ Class.create("FormManager", {
                 element.observe("click", function(event){
                     element.addClassName('SF_inlineButtonWorking');
                     var testValues = $H();
+                    var choicesValue = param.get("choices").split(":");
+                    var firstPart = choicesValue.shift();
+                    if(firstPart == "run_client_action"){
+                        element.removeClassName('SF_inlineButtonWorking');
+                        ajaxplorer.actionBar.fireAction(choicesValue.shift());
+                        return;
+                    }
+                    testValues.set('get_action', firstPart);
                     this.serializeParametersInputs(form, testValues, "DRIVER_OPTION_");
                     var conn = new Connexion();
 
-                    var choicesValue = param.get("choices").split(":");
-                    testValues.set('get_action', choicesValue.shift());
                     if(choicesValue.length > 1){
                         testValues.set("action_plugin_id", choicesValue.shift());
                         testValues.set("action_plugin_method", choicesValue.shift());
@@ -288,6 +294,7 @@ Class.create("FormManager", {
                 element = new Element("div").update(selector);
                 var subFields = new Element("div");
                 element.insert(subFields);
+                if(form.ajxpPaneObject) subFields.ajxpPaneObject = form.ajxpPaneObject;
                 selector.FIELDS_CONTAINER = subFields;
 
                 selector.observe("change", function(e){
@@ -318,20 +325,25 @@ Class.create("FormManager", {
                 }
 
             }
-			var div = new Element('div', {className:"SF_element" + (addFieldCheckbox?" SF_elementWithCheckbox":"")});
-            if(type == "hidden") div.setStyle({display:"none"});
-
+            var div;
             // INSERT LABEL
-            div.insert(new Element('div', {className:"SF_label"}).update(label+(mandatory?'*':'')+' :'));
-            // INSERT CHECKBOX
-            if(addFieldCheckbox){
-                cBox = '<input type="checkbox" class="SF_fieldCheckBox" name="SFCB_'+name+'" '+(defaultValue?'checked':'')+'/>';
-                cBox = new Element('input', {type:'checkbox', className:'SF_fieldCheckBox', name:'SFCB_'+name});
-                cBox.checked = defaultValue?true:false;
-                div.insert(cBox);
+            if(type != "legend"){
+                div = new Element('div', {className:"SF_element" + (addFieldCheckbox?" SF_elementWithCheckbox":"")});
+                if(type == "hidden") div.setStyle({display:"none"});
+
+                div.insert(new Element('div', {className:"SF_label"}).update(label+(mandatory?'*':'')+' :'));
+                // INSERT CHECKBOX
+                if(addFieldCheckbox){
+                    cBox = '<input type="checkbox" class="SF_fieldCheckBox" name="SFCB_'+name+'" '+(defaultValue?'checked':'')+'/>';
+                    cBox = new Element('input', {type:'checkbox', className:'SF_fieldCheckBox', name:'SFCB_'+name});
+                    cBox.checked = defaultValue?true:false;
+                    div.insert(cBox);
+                }
+                // INSERT ELEMENT
+                div.insert(element);
+            }else{
+                div = new Element('div', {className:'dialogLegend'}).update(desc);
             }
-            // INSERT ELEMENT
-            div.insert(element);
             if(type == "image"){
                 div.down("span.SF_image_link.image_update").observe("click", function(){
                     this.createUploadForm(form, div.down('img'), param);
@@ -340,7 +352,7 @@ Class.create("FormManager", {
                     this.confirmExistingImageDelete(form, div.down('img'), div.down('input[name="'+param.get("name")+'"]'), param);
                 }.bind(this));
             }
-			if(desc){
+			if(desc && type != "legend"){
 				modal.simpleTooltip(div.select('.SF_label')[0], '<div class="simple_tooltip_title">'+label+'</div>'+desc);
 			}
             if(json_list){
@@ -392,12 +404,14 @@ Class.create("FormManager", {
                 var ref = parseInt(form.getWidth()) + (Prototype.Browser.IE?40:0);
                 if(ref > (Prototype.Browser.IE?40:0)){
                     var lab = div.down('.SF_label');
-                    lab.setStyle({fontSize:'11px'});
-                    lab.setStyle({width:parseInt(39*ref/100)+'px'});
-                    if( parseInt(lab.getHeight()) > Math.round(parseFloat(lab.getStyle('lineHeight')) + Math.round(parseFloat(lab.getStyle('paddingTop'))) + Math.round(parseFloat(lab.getStyle('paddingBottom')))) ){
-                        lab.next().setStyle({marginTop:lab.getStyle('lineHeight')});
+                    if(lab){
+                        lab.setStyle({fontSize:'11px'});
+                        lab.setStyle({width:parseInt(39*ref/100)+'px'});
+                        if( parseInt(lab.getHeight()) > Math.round(parseFloat(lab.getStyle('lineHeight')) + Math.round(parseFloat(lab.getStyle('paddingTop'))) + Math.round(parseFloat(lab.getStyle('paddingBottom')))) ){
+                            lab.next().setStyle({marginTop:lab.getStyle('lineHeight')});
+                        }
+                        lab.setStyle({width:'39%'});
                     }
-                    lab.setStyle({width:'39%'});
                 }
                 gDiv.insert(div);
                 groupDivs.set(group, gDiv);
@@ -454,7 +468,7 @@ Class.create("FormManager", {
             },
             direction : 'vertical'
         });
-        form.SF_accordion.activate(form.down('div.accordion_toggle'));
+        if(!startAccordionClosed) form.SF_accordion.activate(form.down('div.accordion_toggle'));
         if(addFieldCheckbox){
             form.select("input.SF_fieldCheckBox").each(function(cb){
                 cb.observe("click", function(event){
@@ -467,7 +481,9 @@ Class.create("FormManager", {
                     }else{
                         fElements = $A([fElement]);
                     }
-                    fElements.invoke((state?"disable":"enable"));
+                    fElements.each(function(el){
+                        if(el && el[(state?"disable":"enable")]) el[(state?"disable":"enable")]();
+                    });
                     if(state) cbox.previous("div.SF_label").addClassName("SF_disabled");
                     else cbox.previous("div.SF_label").removeClassName("SF_disabled");
                 });
@@ -541,13 +557,23 @@ Class.create("FormManager", {
         }
         form.select("div.SF_element").each(function(element){
             element.select("input,textarea,select").invoke("observe", "change", realCallback);
-            element.select("input,textarea").invoke("observe", "keydown", realCallback);
+            element.select("input,textarea").invoke("observe", "keydown", function(event){
+                if(event.keyCode == Event.KEY_DOWN || event.keyCode == Event.KEY_UP || event.keyCode == Event.KEY_RIGHT || event.keyCode == Event.KEY_LEFT || event.keyCode == Event.KEY_TAB){
+                    return;
+                }
+                realCallback();
+            });
         }.bind(this) );
         if(form.ajxpPaneObject){
             form.ajxpPaneObject.observe("after_replicate_row", function(replicate){
                 replicate.select("div.SF_element").each(function(element){
                     element.select("input,textarea,select").invoke("observe", "change", realCallback);
-                    element.select("input,textarea").invoke("observe", "keydown", realCallback);
+                    element.select("input,textarea").invoke("observe", "keydown", function(event){
+                        if(event.keyCode == Event.KEY_DOWN || event.keyCode == Event.KEY_UP || event.keyCode == Event.KEY_RIGHT || event.keyCode == Event.KEY_LEFT || event.keyCode == Event.KEY_TAB){
+                            return;
+                        }
+                        realCallback();
+                    });
                 }.bind(this) );
             });
         }
@@ -688,15 +714,17 @@ Class.create("FormManager", {
 				if(form && Prototype.Browser.IE){form[newName] = input;}
                 if(values && values.get(newName)){
                     input.setValue(values.get(newName));
+                }else{
+                    input.setValue('');
                 }
 			});
-			templateRow.up().insert({bottom:tr});
+			templateRow.insert({after:tr});
             if(tr.select('.SF_replication_Add').length){
                 tr.select('.SF_replication_Add').invoke("remove");
             }
             if(index == number - 1){
-                if(templateRow.up().select('.SF_replication_Add').length){
-                    tr.insert(templateRow.up().select('.SF_replication_Add')[0]);
+                if(templateRow.select('.SF_replication_Add').length){
+                    tr.insert(templateRow.select('.SF_replication_Add')[0]);
                 }
             }
             var removeButton = new Element('a', {className:'SF_replication_Remove', title:'Remove this group'})

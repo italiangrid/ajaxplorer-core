@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -64,8 +64,10 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 			unset($this->actions["webdav_preferences"]);
 			$actionXpath=new DOMXPath($contribNode->ownerDocument);
 			$publicUrlNodeList = $actionXpath->query('action[@name="webdav_preferences"]', $contribNode);
-			$publicUrlNode = $publicUrlNodeList->item(0);
-			$contribNode->removeChild($publicUrlNode);			
+            if($publicUrlNodeList->length){
+                $publicUrlNode = $publicUrlNodeList->item(0);
+                $contribNode->removeChild($publicUrlNode);
+            }
 		}
 
         // PERSONAL INFORMATIONS
@@ -96,13 +98,17 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 			unset($this->actions["user_create_repository"]);
 			$actionXpath=new DOMXPath($contribNode->ownerDocument);
 			$publicUrlNodeList = $actionXpath->query('action[@name="user_create_repository"]', $contribNode);
-			$publicUrlNode = $publicUrlNodeList->item(0);
-			$contribNode->removeChild($publicUrlNode);
+            if($publicUrlNodeList->length){
+                $publicUrlNode = $publicUrlNodeList->item(0);
+                $contribNode->removeChild($publicUrlNode);
+            }
 			unset($this->actions["user_delete_repository"]);
 			$actionXpath=new DOMXPath($contribNode->ownerDocument);
 			$publicUrlNodeList = $actionXpath->query('action[@name="user_delete_repository"]', $contribNode);
-			$publicUrlNode = $publicUrlNodeList->item(0);
-			$contribNode->removeChild($publicUrlNode);
+            if($publicUrlNodeList->length){
+                $publicUrlNode = $publicUrlNodeList->item(0);
+                $contribNode->removeChild($publicUrlNode);
+            }
 		}
 
 	}
@@ -250,7 +256,7 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
      * @abstract
      * @param array $context
      * @param String $ID
-     * @param Stream $outputStream
+     * @param Resource $outputStream
      * @return boolean
      */
     abstract function loadBinary($context, $ID, $outputStream = null);
@@ -272,6 +278,7 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 	 * @return AbstractAjxpUser
 	 */
 	function createUserObject($userId){
+        $userId = AuthService::filterUserSensitivity($userId);
 		$abstractUser = $this->instantiateAbstractUserImpl($userId);
 		if(!$abstractUser->storageExists()){
 			AuthService::updateDefaultRights($abstractUser);
@@ -462,7 +469,10 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 					$confStorage = ConfService::getConfStorageImpl();
 					$bmUser = $confStorage->createUserObject("shared");
 				}
-				if($bmUser == null) exit(1);
+				if($bmUser == null) {
+                    AJXP_XMLWriter::header();
+                    AJXP_XMLWriter::close();
+                }
                 $driver = ConfService::loadRepositoryDriver();
                 if(!is_a($driver, "AjxpWrapperProvider")){
                     $driver = false;
@@ -494,21 +504,18 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 						$bmUser->renameBookmark($httpVars["bm_path"], $httpVars["bm_title"]);
 					}
                     AJXP_Controller::applyHook("msg.instant", array("<reload_bookmarks/>", ConfService::getRepository()->getId()));
-				}
-				if(AuthService::usersEnabled() && AuthService::getLoggedUser() != null)
-				{
-					$bmUser->save("user");
-					AuthService::updateUser($bmUser);
-				}
-				else if(!AuthService::usersEnabled())
-				{
-					$bmUser->save("user");
-				}		
+
+                    if(AuthService::usersEnabled() && AuthService::getLoggedUser() != null){
+                        $bmUser->save("user");
+                        AuthService::updateUser($bmUser);
+                    }else if(!AuthService::usersEnabled()){
+                        $bmUser->save("user");
+                    }
+                }
 				AJXP_XMLWriter::header();
-				AJXP_XMLWriter::writeBookmarks($bmUser->getBookmarks());
+				AJXP_XMLWriter::writeBookmarks($bmUser->getBookmarks(), true, isset($httpVars["format"])?$httpVars["format"]:"legacy");
 				AJXP_XMLWriter::close();
-				exit(1);
-			
+
 			break;
 					
 			//------------------------------------
@@ -535,8 +542,7 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 				}
 				header("Content-Type:text/plain");
 				print "SUCCESS";
-				exit(1);
-				
+
 			break;					
 					
 			//------------------------------------
@@ -631,7 +637,7 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 				foreach($repoList as $repoIndex => $repoObject){
 					$accessType = $repoObject->getAccessType();
                     $driver = AJXP_PluginsService::getInstance()->getPluginByTypeName("access", $accessType);
-					if(is_a($driver, "AjxpWrapperProvider") && ($loggedUser->canRead($repoIndex) || $loggedUser->canWrite($repoIndex))){
+            if (is_a($driver, "AjxpWrapperProvider") && !$repoObject->getOption("AJXP_WEBDAV_DISABLED") && ($loggedUser->canRead($repoIndex) || $loggedUser->canWrite($repoIndex))) {
 						$davRepos[$repoIndex] = $webdavBaseUrl ."".($repoObject->getSlug()==null?$repoObject->getId():$repoObject->getSlug());
 					}
 				}
@@ -639,6 +645,7 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 					"webdav_active"  => $webdavActive,
 					"password_set"   => $passSet,
                     "digest_set"    => $digestSet,
+                    "webdav_force_basic" => (ConfService::getCoreConf("WEBDAV_FORCE_BASIC") === true),
 					"webdav_base_url"  => $webdavBaseUrl, 
 					"webdav_repositories" => $davRepos
 				);
@@ -677,7 +684,7 @@ abstract class AbstractConfDriver extends AJXP_Plugin {
 			case  "get_user_templates_definition":
 
 				AJXP_XMLWriter::header("repository_templates");
-				$repositories = ConfService::getRepositoriesList();
+				$repositories = ConfService::getRepositoriesList("all");
                 $pServ = AJXP_PluginsService::getInstance();
 				foreach ($repositories as $repo){
 					if(!$repo->isTemplate) continue;

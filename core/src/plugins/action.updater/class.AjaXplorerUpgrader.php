@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -37,6 +37,8 @@ class AjaXplorerUpgrader {
     private $cleanFile = "UPGRADE/CLEAN-FILES";
     private $additionalScript = "UPGRADE/PHP-SCRIPT";
     private $releaseNote = "UPGRADE/NOTE";
+    private $htmlInstructions = "UPGRADE/NOTE-HTML";
+    private $dbUpgrade = "UPGRADE/DB-UPGRADE";
     private $installPath;
     private static $context = null;
 
@@ -63,20 +65,22 @@ class AjaXplorerUpgrader {
 
         $this->workingFolder = AJXP_DATA_PATH."/tmp/update";
         $this->steps = array(
-            "checkDownloadFolder"   => "Checking download permissions",
-            "downloadArchive"       => "Downloading upgrade archive",
-            "checkArchiveIntegrity" => "Checking archive integrity",
-            "checkTargetFolder"     => "Checking folders permissions",
-            "extractArchive"        => "Extracting Archive",
-            "backupMarkedFiles"     => "Backuping your modified files",
-            "copyCodeFiles"         => "Copying core source files",
-            "restoreMarkedFiles"     => "Restoring your modified files",
-            "duplicateConfFiles"    => "Copying configuration files",
-            "cleanUnusedFiles"      => "Deleting unused files",
-            "specificTask"          => "Running specific upgrade task",
-            "updateVersion"         => "Everything went ok, upgrading version!",
-            "clearCache"            => "Clearing plugins cache",
-            "displayNote"           => "Release note : ",
+            "checkDownloadFolder"       => "Checking download permissions",
+            "downloadArchive"           => "Downloading upgrade archive",
+            "checkArchiveIntegrity"     => "Checking archive integrity",
+            "checkTargetFolder"         => "Checking folders permissions",
+            "extractArchive"            => "Extracting Archive",
+            "backupMarkedFiles"         => "Backuping your modified files",
+            "copyCodeFiles"             => "Copying core source files",
+            "restoreMarkedFiles"        => "Restoring your modified files",
+            "duplicateConfFiles"        => "Copying configuration files",
+            "cleanUnusedFiles"          => "Deleting unused files",
+            "upgradeDB"                 => "Upgrading database",
+            "specificTask"              => "Running specific upgrade task",
+            "updateVersion"             => "Everything went ok, upgrading version!",
+            "clearCache"                => "Clearing plugins cache",
+            "displayNote"               => "Release note : ",
+            "displayUpgradeInstructions"=> "Upgrade instructions",
         );
 
     }
@@ -91,7 +95,11 @@ class AjaXplorerUpgrader {
     }
 
     static function getUpgradePath($url, $format = "php", $channel="stable"){
-        $json = AJXP_Utils::getRemoteContent($url."?version=".AJXP_VERSION."&channel=".$channel, null, self::$context);
+        if(isSet(self::$context)){
+            $json = file_get_contents($url."?channel=".$channel."&version=".AJXP_VERSION."&package=pydio-core", null, self::$context);
+        }else{
+            $json = AJXP_Utils::getRemoteContent($url."?channel=".$channel."&version=".AJXP_VERSION."&package=pydio-core");
+        }
         if($format == "php") return json_decode($json, true);
         else return $json;
     }
@@ -262,6 +270,48 @@ class AjaXplorerUpgrader {
 
     }
 
+    function upgradeDB(){
+
+        if(!is_file($this->workingFolder."/".$this->dbUpgrade.".sql")) return "Nothing to do.";
+        $confDriver = ConfService::getConfStorageImpl();
+        $authDriver = ConfService::getAuthDriverImpl();
+        $logger = AJXP_Logger::getInstance();
+        if(is_a($confDriver, "sqlConfDriver")){
+            $test = AJXP_Utils::cleanDibiDriverParameters($confDriver->getOption("SQL_DRIVER"));
+            if(!is_array($test) || !isSet($test["driver"])) return "Nothing to do";
+            $type = $test["driver"];
+            $file = strpos($test["driver"], "sqlite") === 0 ? $this->dbUpgrade.".sqlite" : $this->dbUpgrade. ".sql";
+            $sqlInstructions = file_get_contents($this->workingFolder."/".$file);
+
+            $parts = array_map("trim", explode("/* SEPARATOR */", $sqlInstructions));
+            $results = array();
+            $errors = array();
+
+            require_once(AJXP_BIN_FOLDER."/dibi.compact.php");
+            dibi::connect($test);
+            dibi::begin();
+            foreach($parts as $sqlPart){
+                if(empty($sqlPart)) continue;
+                try{
+                    dibi::nativeQuery($sqlPart);
+                    $results[] = $sqlPart;
+                }catch (DibiException $e){
+                    $errors[] = $sqlPart. " (". $e->getMessage().")";
+                }
+            }
+            dibi::commit();
+            dibi::disconnect();
+
+            if(!count($errors)){
+                return "Database successfully upgraded";
+            }else{
+                return "Database upgrade failed. <br>The following statements were executed : <br>".implode("<br>", $results).",<br><br> The following statements failed : <br>".implode("<br>", $errors)."<br><br> You should manually upgrade your DB.";
+            }
+
+        }
+
+    }
+
     function specificTask(){
 
         if(!is_file($this->workingFolder."/".$this->additionalScript)) return "Nothing to do.";
@@ -272,6 +322,9 @@ class AjaXplorerUpgrader {
 
     function updateVersion(){
         // Finally copy VERSION file
+        if(!is_file($this->workingFolder."/conf/VERSION")){
+            return "<b>No VERSION file in archive</b>";
+        }
         copy($this->workingFolder."/conf/VERSION", $this->installPath."/conf/VERSION");
         $vCont = file_get_contents($this->installPath."/conf/VERSION");
         list($v, $date) = explode("__", $vCont);
@@ -292,8 +345,16 @@ class AjaXplorerUpgrader {
     }
 
     function displayNote(){
-        if(is_file($this->workingFolder."/UPGRADE/NOTE")){
-            return nl2br(file_get_contents($this->workingFolder."/UPGRADE/NOTE"));
+        if(is_file($this->workingFolder."/".$this->releaseNote)){
+            return nl2br(file_get_contents($this->workingFolder."/".$this->releaseNote));
+        }
+    }
+
+    function displayUpgradeInstructions(){
+        if(is_file($this->workingFolder."/".$this->htmlInstructions)){
+            return "<div id='upgrade_last_html'>".file_get_contents($this->workingFolder."/".$this->htmlInstructions)."
+            <h1>Upgrade report</h1>
+            </div>";
         }
     }
 

@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -135,6 +135,7 @@ Class.create("InfoPanel", AjxpPane, {
         var userSelection = ajaxplorer.getUserSelection();
         var contextNode = userSelection.getContextNode();
 		this.empty();
+        this.clearPanelHeaderIcons();
         if(this.scrollbar) this.scrollbar.recalculateLayout();
 		if(!contextNode) {
 			return;
@@ -185,6 +186,7 @@ Class.create("InfoPanel", AjxpPane, {
 			this.addActions('empty');
             if(this.scrollbar) this.scrollbar.recalculateLayout();
             this.updateTitle();
+            disableTextSelection(this.contentContainer);
             return;
 		}
 		if(!passedNode && !userSelection.isUnique())
@@ -192,6 +194,7 @@ Class.create("InfoPanel", AjxpPane, {
 			this.setContent('<br><br><center><i>'+ userSelection.getFileNames().length + ' '+MessageHash[128]+'</i></center><br><br>');
 			this.addActions('multiple');
             if(this.scrollbar) this.scrollbar.recalculateLayout();
+            disableTextSelection(this.contentContainer);
 			return;
 		}
 
@@ -218,10 +221,21 @@ Class.create("InfoPanel", AjxpPane, {
             }
         }.bind(this));
         this.contentContainer.select('[data-ajxpAction]').each(function(act){
-            act.observe('click', function(event){
-                window.ajaxplorer.actionBar.fireAction(event.target.getAttribute('data-ajxpAction'));
-            });
-        });
+            if(act.getAttribute('data-ajxpAction') != 'no-action'){
+                act.observe('click', function(event){
+                    window.ajaxplorer.actionBar.fireAction(event.target.getAttribute('data-ajxpAction'));
+                }.bind(this));
+            }else{
+                act.setStyle({cursor:"default"});
+            }
+            var panelPointer = act.up("div.panelHeader").next();
+            this.contributePanelHeaderIcon(
+                act.getAttribute("class"),
+                act.getAttribute("title"),
+                act.getAttribute('data-ajxpAction'),
+                panelPointer
+            );
+        }.bind(this));
         this.addActions('unique');
 		var fakes = this.contentContainer.select('div[id="preview_rich_fake_element"]');
 		if(fakes && fakes.length){
@@ -230,6 +244,7 @@ Class.create("InfoPanel", AjxpPane, {
 			this.resize();
 		}
 		if(this.scrollbar) this.scrollbar.recalculateLayout();
+        disableTextSelection(this.contentContainer);
 	},
 	/**
 	 * Insert html in content pane
@@ -245,8 +260,36 @@ Class.create("InfoPanel", AjxpPane, {
         if(!title) title = MessageHash[131];
         var panelTitle = this.htmlElement.down('div.panelHeader');
         if(panelTitle) {
-            if(panelTitle.down('span')) panelTitle.down('span').update(title);
-            else panelTitle.update(title);
+            if(panelTitle.down('span[ajxp_message_id]')) panelTitle.down('span[ajxp_message_id]').update(title);
+            //else panelTitle.update(title);
+        }
+    },
+
+    clearPanelHeaderIcons:function(){
+        if(!this.htmlElement) return;
+        var div = this.htmlElement.down('div.folded_icons');
+        if(div) div.update("");
+    },
+
+    contributePanelHeaderIcon:function(iconClass, iconTitle, ajxpAction, panelPointer){
+        if(!this.htmlElement || !this.htmlElement.down('div.panelHeader')) return;
+        var div = this.htmlElement.down('div.folded_icons');
+        if(!div) {
+            div = new Element('div', {className: 'folded_icons'});
+            this.htmlElement.down('div.panelHeader').insert(div);
+        }else{
+            if(div.down('span.'+iconClass)) return;
+        }
+        var ic = new Element("span", {className:iconClass, title: iconTitle});
+        div.insert(ic);
+        if(ajxpAction){
+            ic.addClassName('clickable');
+            ic.observe("click", function(){
+                ajaxplorer.actionBar.fireAction(ajxpAction);
+            }.bind(this));
+        }
+        if(panelPointer){
+             modal.simpleTooltip(ic, panelPointer, 'bottom left', 'foldedPanel_tooltip', 'element', true);
         }
     },
 
@@ -416,6 +459,7 @@ Class.create("InfoPanel", AjxpPane, {
 			ajaxplorer.loadEditorResources(editors[0].resourcesManager);
 			var editorClass = Class.getByName(editors[0].editorClass);
 			if(editorClass){
+                this.contributePanelHeaderIcon('icon-eye-close', 'Preview', 'open_with');
 				if(getTemplateElement){
 					return '<div id="preview_rich_fake_element"></div>';
 				}else{

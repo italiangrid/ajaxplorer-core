@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -24,7 +24,7 @@ defined('AJXP_EXEC') or die( 'Access not allowed');
  * @package AjaXplorer
  * @subpackage SabreDav
  */
-class AJXP_Sabre_NodeLeaf extends AJXP_Sabre_Node implements Sabre_DAV_IFile
+class AJXP_Sabre_NodeLeaf extends AJXP_Sabre_Node implements Sabre\DAV\IFile
 {
 
     /**
@@ -52,6 +52,9 @@ class AJXP_Sabre_NodeLeaf extends AJXP_Sabre_Node implements Sabre_DAV_IFile
         // Warning, passed by ref
         $p = $this->path;
 
+        if(!AuthService::getLoggedUser()->canWrite($this->repository->getId())){
+            throw new \Sabre\DAV\Exception\Forbidden() ;
+        }
         $this->getAccessDriver()->nodeWillChange($p, intval($_SERVER["CONTENT_LENGTH"]));
 
         $stream = fopen($this->getUrl(), "w");
@@ -72,6 +75,8 @@ class AJXP_Sabre_NodeLeaf extends AJXP_Sabre_Node implements Sabre_DAV_IFile
      * @return mixed
      */
     function get(){
+        $ajxpNode = new AJXP_Node($this->getUrl());
+        AJXP_Controller::applyHook("node.read", array(&$ajxpNode));
         return fopen($this->getUrl(), "r");
     }
 

@@ -7,3 +7,4 @@ js/ajaxplorer/class.Connexion.js
 js/lib/md5/md5.js
 js/ajaxplorer/ajxp_utils.js
 js/ajaxplorer/class.AjxpBootstrap.js
+js/ajaxplorer/functions.js

@@ -1,24 +1,24 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  *
- * Description : Interface between AjaXplorer and external software. Handle with care!
+ * Description : Interface between Pydio and external software. Handle with care!
  * Take care when using this file. It can't be included anywhere, as it's doing global scope pollution.
  *    Typically, this is used as glue code from your CMS frontend and AJXP code.
  *    This example file switches sessions (close CMS session, open AJXP session, modify AJXP's
@@ -72,6 +72,37 @@ if ($authPlug->getOption("SECRET") == "")
     $plugInAction = "WRONG_SECRET";
 }
 
+/**
+ * @param array $loginData
+ * @param AbstractAjxpUser $userObject
+ */
+function ajxp_gluecode_updateRole($loginData, &$userObject){
+    $authPlug = ConfService::getAuthDriverImpl();
+    $rolesMap = $authPlug->getOption("ROLES_MAP");
+    if(!isSet($rolesMap) || strlen($rolesMap) == 0) return;
+    // String like {key:value,key2:value2,key3:value3}
+    $rolesMap = explode(",", $rolesMap);
+    $newMap = array();
+    foreach($rolesMap as $value){
+        $parts = explode(":", trim($value));
+        $roleId = trim($parts[1]);
+        $roleObject = AuthService::getRole($roleId);
+        if($roleObject != null){
+            $newMap[trim($parts[0])] = $roleObject;
+            $userObject->removeRole($roleId);
+        }
+    }
+    $rolesMap = $newMap;
+    if(isset($loginData["roles"]) && is_array($loginData["roles"])){
+        foreach($loginData["roles"] as $role){
+            if(isSet($rolesMap[$role])) {
+                $userObject->addRole($rolesMap[$role]);
+            }
+        }
+    }
+}
+
+
 switch($plugInAction)
 {
 	case 'login':
@@ -79,7 +110,9 @@ switch($plugInAction)
 	    if (is_array($login))
 	    {
 	        $newSession = new SessionSwitcher("AjaXplorer");
+	        $creation = false;
 	        if($autoCreate && !AuthService::userExists($login["name"], "w")){
+		        $creation = true;
 		        $isAdmin = (isSet($login["right"]) && $login["right"] == "admin");
 	        	AuthService::createUser($login["name"], $login["password"], $isAdmin);
 	        }
@@ -93,9 +126,13 @@ switch($plugInAction)
 			   	$userObject = AuthService::getLoggedUser();
 			   	if($userObject->isAdmin()){
 			   		AuthService::updateAdminRights($userObject);
+			   		// Modificato da noi - 31/7/2013
+					setcookie("is_admin", "true", 0, '', '', true, false);
+					// fine modifica
 			   	}else{
 					AuthService::updateDefaultRights($userObject);
 			   	}
+                if($creation) ajxp_gluecode_updateRole($login, $userObject);
 				$userObject->save("superuser");
 		   	}	        
 	    }
@@ -112,6 +149,12 @@ switch($plugInAction)
 	    {
 	        $isAdmin = (isSet($user["right"]) && $user["right"] == "admin");
 	        AuthService::createUser($user["name"], $user["password"], $isAdmin);
+            if(isSet($user["roles"])){
+                $confDriver = ConfService::getConfStorageImpl();
+                $userObject = $confDriver->createUserObject($user["name"]);
+                ajxp_gluecode_updateRole($user, $userObject);
+                $userObject->save("superuser");
+            }
 	        $result = TRUE;
 	    }
 	    break;
@@ -131,9 +174,10 @@ switch($plugInAction)
 	        {
 	        	$isAdmin =  (isSet($user["right"]) && $user["right"] == "admin");
 				$confDriver = ConfService::getConfStorageImpl();
-				$user = $confDriver->createUserObject($user["name"]);
-				$user->setAdmin($isAdmin);
-				$user->save("superuser");
+				$userObject = $confDriver->createUserObject($user["name"]);
+				$userObject->setAdmin($isAdmin);
+                ajxp_gluecode_updateRole($user, $userObject);
+				$userObject->save("superuser");
 	            $result = TRUE;
 	        }
 	        else $result = FALSE;

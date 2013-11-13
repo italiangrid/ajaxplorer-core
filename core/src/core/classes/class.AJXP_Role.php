@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2012 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die('Access not allowed');
@@ -191,12 +191,12 @@ class AJXP_Role implements AjxpGroupPathProvider
     public function filterParameterValue($pluginId, $parameterName, $repositoryId, $parameterValue){
         if(isSet($this->parameters[AJXP_REPO_SCOPE_ALL][$pluginId][$parameterName])){
             $v = $this->parameters[AJXP_REPO_SCOPE_ALL][$pluginId][$parameterName];
-            if($v == AJXP_VALUE_CLEAR) return "";
+            if($v === AJXP_VALUE_CLEAR) return "";
             else return $v;
         }
         if(isSet($this->parameters[$repositoryId][$pluginId][$parameterName])){
             $v = $this->parameters[$repositoryId][$pluginId][$parameterName];
-            if($v == AJXP_VALUE_CLEAR) return "";
+            if($v === AJXP_VALUE_CLEAR) return "";
             else return $v;
         }
         return $parameterValue;
@@ -286,6 +286,10 @@ class AJXP_Role implements AjxpGroupPathProvider
         foreach($newParams as $repoId => $data){
             foreach ($data as $pluginId => $param) {
                 foreach($param as $parameterName => $parameterValue){
+                    if($parameterValue === true || $parameterValue === false){
+                        $newRole->setParameterValue($pluginId, $parameterName, $parameterValue, $repoId);
+                        continue;
+                    }
                     if($parameterValue == AJXP_VALUE_CLEAR) continue;
                     $newRole->setParameterValue($pluginId, $parameterName, $parameterValue, $repoId);
                 }
@@ -324,6 +328,7 @@ class AJXP_Role implements AjxpGroupPathProvider
                 $current = &$current[$key];
             }else{
                 $current[$key] = $value;
+                break;
             }
         }
         return $arr;

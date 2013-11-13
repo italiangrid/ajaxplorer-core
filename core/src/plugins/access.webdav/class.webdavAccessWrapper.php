@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  *
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -156,6 +156,12 @@ class webdavAccessWrapper extends fsAccessWrapper {
 		return $this->dH !== false;
 	}
 
+    public function dir_readdir (){
+        $x = parent::dir_readdir();
+        if ( strstr( $x, '%') !== false) $x = urldecode( $x);
+        return( $x);
+    }
+
 	
 	// DUPBLICATE STATIC FUNCTIONS TO BE SURE 
 	// NOT TO MESS WITH self:: CALLS
@@ -175,23 +181,20 @@ class webdavAccessWrapper extends fsAccessWrapper {
 		}
 	}
 
-	public static function getRealFSReference($path, $persistent = false){
-		$contextOpened =false;
-		if(self::$crtZip != null){
-			$contextOpened = true;
-			$crtZip = self::$crtZip;
-			self::$crtZip = null;
-		}
-		$realPath = self::initPath($path, "file");
-		if(!$contextOpened) {
-			self::closeWrapper();
-		}else{
-			self::$crtZip = $crtZip;
-		}
-		return $realPath;
-	}
+    public static function getRealFSReference($path, $persistent = false){
+        if ( $persistent) {
+            $tmpFile = AJXP_Utils::getAjxpTmpDir()."/".md5(time());
+            $tmpHandle = fopen($tmpFile, "wb");
+            self::copyFileInStream($path, $tmpHandle);
+            fclose($tmpHandle);
+            return $tmpFile;
+        } else {
+            $realPath = self::initPath($path, "file");
+            return $realPath;
+        }
+    }
 
-	
+
     public static function isRemote(){
     	return true;
     }

@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -238,38 +238,40 @@ class AbstractAccessDriver extends AJXP_Plugin {
     	}
 	    	
     	$p = $stat["mode"];
-    	$st = sprintf("%07o", ($p & 7777770));
-    	AJXP_Logger::debug("FIX PERM DATA ($fixPermPolicy, $st)".$p,sprintf("%o", ($p & 000777)));
+        //$st = sprintf("%07o", ($p & 7777770));
+        //AJXP_Logger::debug("FIX PERM DATA ($fixPermPolicy, $st)".$p,sprintf("%o", ($p & 000777)));
     	if($p != NULL){
-            $isdir = ($p&0040000?true:false);
-            $changed = false;
+            /*
+                decoct returns a string, it's more convenient to manipulate as we know the structure
+                of the octal form of stat["mode"]
+                    - first two or three chars => file type (dir: 40, file: 100, symlink: 120)
+                    - three remaining characters => file permissions (1st char: user, 2nd char: group, 3rd char: others)
+            */
+
+            $p = decoct($p);
+            $lastInd = (intval($p[0]) == 4)? 4 : 5;
+            $otherPerms = decbin(intval($p[$lastInd]));
+            $actualPerms = $otherPerms;
+
 	    	if( ( isSet($uid) && $stat["uid"] == $uid ) || $fixPermPolicy == "user"  ) {
     			AJXP_Logger::debug("upgrading abit to ubit");
-                $changed = true;
-    			$p  = $p&7777770;
-    			if( $p&0x0100 ) $p += 04;
-	    		if( $p&0x0080 ) $p += 02;
-	    		if( $p&0x0040 ) $p += 01;
+                $userPerms = decbin(intval($p[$lastInd - 2]));
+                $actualPerms |= $userPerms;
 	    	}else if( ( isSet($gid) && $stat["gid"] == $gid )  || $fixPermPolicy == "group"  ) {
 	    		AJXP_Logger::debug("upgrading abit to gbit");
-                $changed = true;
-    			$p  = $p&7777770;
-	    		if( $p&0x0020 ) $p += 04;
-	    		if( $p&0x0010 ) $p += 02;
-	    		if( $p&0x0008 ) $p += 01;
+                $groupPerms = decbin(intval($p[$lastInd - 1]));
+                $actualPerms |= $groupPerms;
 	    	}
-            if($isdir && $changed){
-                $p += 0040000;
+            $test = bindec($actualPerms);
+            $p[$lastInd] = $test;
+
+            $stat["mode"] = $stat[2] = octdec($p);
+            //AJXP_Logger::debug("FIXED PERM DATA ($fixPermPolicy)",sprintf("%o", ($p & 000777)));
             } 
-			$stat["mode"] = $stat[2] = $p;
-    		AJXP_Logger::debug("FIXED PERM DATA ($fixPermPolicy)",sprintf("%o", ($p & 000777)));
     	}
-    }
-    
+
     protected function resetAllPermission($value){
     	
     }
 
 }
-
-?>

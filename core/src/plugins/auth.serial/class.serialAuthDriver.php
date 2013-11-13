@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -64,6 +64,7 @@ class serialAuthDriver extends AbstractAuthDriver {
             $users = array_combine(array_map("strtolower", array_keys($users)), array_values($users));
         }
         ConfService::getConfStorageImpl()->filterUsersByGroup($users, $baseGroup, false);
+        ksort($users);
         return $users;
 	}
 
@@ -88,8 +89,8 @@ class serialAuthDriver extends AbstractAuthDriver {
         }
         return $result;
     }
-    function getUsersCount(){
-        return count($this->listUsers());
+    function getUsersCount($baseGroup = "/", $regexp = ""){
+        return count($this->listUsersPaginated($baseGroup, $regexp));
     }
 
 	
@@ -105,7 +106,7 @@ class serialAuthDriver extends AbstractAuthDriver {
 		$userStoredPass = $this->getUserPass($login);
 		if(!$userStoredPass) return false;
 		if($seed == "-1"){ // Seed = -1 means that password is not encoded.
-			return ($userStoredPass == md5($pass));
+			return AJXP_Utils::pbkdf2_validate_password($pass, $userStoredPass);//($userStoredPass == md5($pass));
 		}else{
 			return (md5($userStoredPass.$seed) == $pass);
 		}
@@ -124,7 +125,7 @@ class serialAuthDriver extends AbstractAuthDriver {
 		if(!is_array($users)) $users = array();
 		if(array_key_exists($login, $users)) return "exists";
 		if($this->getOption("TRANSMIT_CLEAR_PASS") === true){
-			$users[$login] = md5($passwd);
+			$users[$login] = AJXP_Utils::pbkdf2_create_hash($passwd);//md5($passwd);
 		}else{
 			$users[$login] = $passwd;
 		}
@@ -135,7 +136,7 @@ class serialAuthDriver extends AbstractAuthDriver {
 		$users = $this->_listAllUsers();
 		if(!is_array($users) || !array_key_exists($login, $users)) return ;
 		if($this->getOption("TRANSMIT_CLEAR_PASS") === true){
-			$users[$login] = md5($newPass);
+			$users[$login] = AJXP_Utils::pbkdf2_create_hash($newPass);//md5($newPass);
 		}else{
 			$users[$login] = $newPass;
 		}

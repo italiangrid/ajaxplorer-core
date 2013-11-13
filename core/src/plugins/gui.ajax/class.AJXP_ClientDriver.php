@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -29,6 +29,10 @@ defined('AJXP_EXEC') or die( 'Access not allowed');
 class AJXP_ClientDriver extends AJXP_Plugin 
 {
     private static $loadedBookmarks;
+
+    public function isEnabled(){
+        return true;
+    }
 
     public function loadConfigs($configData){
         parent::loadConfigs($configData);
@@ -110,7 +114,7 @@ class AJXP_ClientDriver extends AJXP_Plugin
 			case "get_xml_registry" :
 				
 				$regDoc = AJXP_PluginsService::getXmlRegistry();
-                $changes = AJXP_Controller::filterActionsRegistry($regDoc);
+                $changes = AJXP_Controller::filterRegistryFromRole($regDoc);
                 if($changes) AJXP_PluginsService::updateXmlRegistry($regDoc);
 
                 $clone = $regDoc->cloneNode(true);
@@ -152,9 +156,7 @@ class AJXP_ClientDriver extends AJXP_Plugin
 			//------------------------------------
 			case "get_boot_gui":
 
-                if(strstr($_SERVER["HTTP_USER_AGENT"], "MSIE 9.") || strstr($_SERVER["HTTP_USER_AGENT"], "MSIE 10.")){
-                    header("X-UA-Compatible: IE=9");
-                }
+                HTMLWriter::internetExplorerMainDocumentHeader();
                 HTMLWriter::charsetHeader();
 				
 				if(!is_file(TESTS_RESULT_FILE)){
@@ -203,10 +205,19 @@ class AJXP_ClientDriver extends AJXP_Plugin
                 }
 
                 // PRECOMPUTE REGISTRY
-                $regDoc = AJXP_PluginsService::getXmlRegistry();
-                $changes = AJXP_Controller::filterActionsRegistry($regDoc);
-                if($changes) AJXP_PluginsService::updateXmlRegistry($regDoc);
-                $START_PARAMETERS["PRELOADED_REGISTRY"] = AJXP_XMLWriter::replaceAjxpXmlKeywords($regDoc->saveXML());
+                if(!isSet($START_PARAMETERS["FORCE_REGISTRY_RELOAD"])){
+                    $regDoc = AJXP_PluginsService::getXmlRegistry();
+                    $changes = AJXP_Controller::filterRegistryFromRole($regDoc);
+                    if($changes) AJXP_PluginsService::updateXmlRegistry($regDoc);
+                    $clone = $regDoc->cloneNode(true);
+                    $clonePath = new DOMXPath($clone);
+                    $serverCallbacks = $clonePath->query("//serverCallback|hooks");
+                    foreach($serverCallbacks as $callback){
+                        $callback->parentNode->removeChild($callback);
+                    }
+                    $START_PARAMETERS["PRELOADED_REGISTRY"] = AJXP_XMLWriter::replaceAjxpXmlKeywords($clone->saveXML());
+                }
+
 				$JSON_START_PARAMETERS = json_encode($START_PARAMETERS);
                 $crtTheme = $this->pluginConf["GUI_THEME"];
 				if(ConfService::getConf("JS_DEBUG")){
@@ -256,36 +267,43 @@ class AJXP_ClientDriver extends AJXP_Plugin
 
     function computeBootConf(){
         if(isSet($_GET["server_prefix_uri"])){
-            $_SESSION["AJXP_SERVER_PREFIX_URI"] = $_GET["server_prefix_uri"];
+            $_SESSION["AJXP_SERVER_PREFIX_URI"] = str_replace("_UP_", "..", $_GET["server_prefix_uri"]);
         }
         $config = array();
         $config["ajxpResourcesFolder"] = "plugins/gui.ajax/res";
-        $config["ajxpServerAccess"] = AJXP_SERVER_ACCESS;
+        if(session_name() == "AjaXplorer_Shared"){
+            $config["ajxpServerAccess"] = "index_shared.php";
+        }else{
+            $config["ajxpServerAccess"] = AJXP_SERVER_ACCESS;
+        }
         $config["zipEnabled"] = ConfService::zipEnabled();
         $config["multipleFilesDownloadEnabled"] = ConfService::getCoreConf("ZIP_CREATION");
         $config["customWording"] = array(
-            "welcomeMessage" => $this->pluginConf["CUSTOM_WELCOME_MESSAGE"],
+            "welcomeMessage" => $this->getFilteredOption("CUSTOM_WELCOME_MESSAGE"),
             "title"			 => ConfService::getCoreConf("APPLICATION_TITLE"),
-            "icon"			 => $this->pluginConf["CUSTOM_ICON"],
-            "iconWidth"		 => $this->pluginConf["CUSTOM_ICON_WIDTH"],
-            "iconHeight"     => $this->pluginConf["CUSTOM_ICON_HEIGHT"],
-            "iconOnly"       => $this->pluginConf["CUSTOM_ICON_ONLY"],
-            "titleFontSize"	 => $this->pluginConf["CUSTOM_FONT_SIZE"]
+            "icon"			 => $this->getFilteredOption("CUSTOM_ICON"),
+            "iconWidth"		 => $this->getFilteredOption("CUSTOM_ICON_WIDTH"),
+            "iconHeight"     => $this->getFilteredOption("CUSTOM_ICON_HEIGHT"),
+            "iconOnly"       => $this->getFilteredOption("CUSTOM_ICON_ONLY"),
+            "titleFontSize"	 => $this->getFilteredOption("CUSTOM_FONT_SIZE")
         );
-        if(!empty($this->pluginConf["CUSTOM_ICON_BINARY"])){
-            $config["customWording"]["icon_binary_url"] = "get_action=get_global_binary_param&binary_id=".$this->pluginConf["CUSTOM_ICON_BINARY"];
+        $cIcBin = $this->getFilteredOption("CUSTOM_ICON_BINARY");
+        if(!empty($cIcBin)){
+            $config["customWording"]["icon_binary_url"] = "get_action=get_global_binary_param&binary_id=".$cIcBin;
         }
         $config["usersEnabled"] = AuthService::usersEnabled();
         $config["loggedUser"] = (AuthService::getLoggedUser()!=null);
         $config["currentLanguage"] = ConfService::getLanguage();
         $config["session_timeout"] = intval(ini_get("session.gc_maxlifetime"));
-        if(!isSet($this->pluginConf["CLIENT_TIMEOUT_TIME"]) || $this->pluginConf["CLIENT_TIMEOUT_TIME"] == ""){
+        $timeoutTime = $this->getFilteredOption("CLIENT_TIMEOUT_TIME");
+        if(empty($timeoutTime)){
             $to = $config["session_timeout"];
         }else{
-            $to = $this->pluginConf["CLIENT_TIMEOUT_TIME"];
+            $to = $timeoutTime;
         }
+        if(session_name() == "AjaXplorer_Shared") $to = -1;
         $config["client_timeout"] = $to;
-        $config["client_timeout_warning"] = $this->pluginConf["CLIENT_TIMEOUT_WARN"];
+        $config["client_timeout_warning"] = $this->getFilteredOption("CLIENT_TIMEOUT_WARN");
         $config["availableLanguages"] = ConfService::getConf("AVAILABLE_LANG");
         $config["usersEditable"] = ConfService::getAuthDriverImpl()->usersEditable();
         $config["ajxpVersion"] = AJXP_VERSION;
@@ -293,11 +311,13 @@ class AJXP_ClientDriver extends AJXP_Plugin
         if(stristr($_SERVER["HTTP_USER_AGENT"], "msie 6")){
             $config["cssResources"] = array("css/pngHack/pngHack.css");
         }
-        if(!empty($this->pluginConf['GOOGLE_ANALYTICS_ID'])) {
+        $analytic = $this->getFilteredOption('GOOGLE_ANALYTICS_ID');
+        if(!empty($analytic)) {
             $config["googleAnalyticsData"] = array(
-                "id"=> 		$this->pluginConf['GOOGLE_ANALYTICS_ID'],
-                "domain" => $this->pluginConf['GOOGLE_ANALYTICS_DOMAIN'],
-                "event" => 	$this->pluginConf['GOOGLE_ANALYTICS_EVENT']);
+                "id"=> 		$analytic,
+                "domain" => $this->getFilteredOption('GOOGLE_ANALYTICS_DOMAIN'),
+                "event" => 	$this->getFilteredOption('GOOGLE_ANALYTICS_EVENT')
+            );
         }
         $config["i18nMessages"] = ConfService::getMessages();
         $config["password_min_length"] = ConfService::getCoreConf("PASSWORD_MINLENGTH", "auth");
@@ -315,7 +335,7 @@ class AJXP_ClientDriver extends AJXP_Plugin
         $user = AuthService::getLoggedUser();
         if($user == null) return;
         $metadata = $ajxpNode->retrieveMetadata("ajxp_bookmarked", true, AJXP_METADATA_SCOPE_REPOSITORY, true);
-        if(count($metadata)){
+        if(is_array($metadata) && count($metadata)){
             $ajxpNode->mergeMetadata(array(
                      "ajxp_bookmarked" => "true",
                      "overlay_icon"  => "bookmark.png"

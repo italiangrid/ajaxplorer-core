@@ -98,8 +98,7 @@ textarea{
 {
     background-color: #ffffc0;
 }
-
-.resizer{
+.resizableHandle{
     position: absolute;
     width: 10px;
     height: 10px;
@@ -654,24 +653,38 @@ html.boxshadow div.errorMessage{
     box-shadow: 2px 2px 5px #AAAAAA;
 }
 
+
+div.accordion_toggle,
+div.dialogContentMainTitle{
+    color: rgb(117, 128, 139);
+    font-size: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgb(117, 128, 139);
+    padding-bottom: 0;
+}
+
 div.accordion_toggle{
-    clear:left;
-    background-color: #B0C6D8;
-    padding: 2px 6px;
-    margin-top: 2px;
-    color: white;
-    font-weight: bold;
     cursor: pointer;
-    border-radius: 4px;
-    background-image: url('../images/0.gif');
+    background-image: url('../images/Tplus.png');
     background-repeat: no-repeat;
-    background-position: 5px 6px;
-    padding-left: 18px;
-    line-height:15px;
+    background-position-x: -6px;
+    background-position-y: -3px;
+    padding-left: 15px;
+    font-size: 16px;
+    margin-bottom: 0;
+    margin-top: 10px;
+    padding-bottom: 2px;
+    border-bottom: 0;
+}
+
+div.accordion_content div.dialogLegend{
+    text-align: justify;
+    opacity: 0.7;
+    color: rgb(117, 128, 139);
 }
 
 div.accordion_toggle_active{
-    background-image: url('../images/1.gif');
+    background-image: url('../images/Tminus.png');
 }
 
 
@@ -680,13 +693,6 @@ div.accordion_content{
     padding: 5px;
 }
 
-div.dialogContentMainTitle{
-    color: rgb(117, 128, 139);
-    font-size: 20px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid rgb(117, 128, 139);
-    padding-bottom: 0;
-}
 
 div.oneFieldForm{
     margin-bottom: 13px;
@@ -1061,7 +1067,7 @@ div.editor_header > span.header_label{
 
 .action_bar.text_only{
     line-height: 16px;
-    height:30px;
+    height:38px;
 }
 
 .action_bar.icons_only{
@@ -2236,6 +2242,20 @@ div.tabulatorContainer div#display_toolbar{
     padding-top: 6px;
     padding-right: 6px;
 }
+
+#info_panel div#display_toolbar {
+    float: left;
+    text-align: left;
+    min-width: 20px;
+    height: 10px;
+}
+
+#info_panel div#display_toolbar a {
+    background: none;
+    border: none;
+    margin-right: 0;
+}
+
 span.toggleHeader{
     display: inline-block;
     overflow: hidden;
@@ -2488,11 +2508,89 @@ div.class-FetchedResultPane div.thumbnail_selectable_cell.detailed span.text_lab
     font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
     border-left: 1px solid rgb(172, 178, 184);
     border-right: 1px solid rgb(172, 178, 184);
+    padding-bottom: 15px;
 }
 
 #info_panel div.panelHeader.panelHeaderWithIcon{
     background-color: #5599FF !important;
     border-bottom: 2px solid rgb(65, 117, 194);
+    -webkit-transition-property: height;
+    -webkit-transition-duration: 0.2s;
+    -webkit-transition-timing-function: ease-out;
+    -moz-transition-property: height;
+    -moz-transition-duration: 0.2s;
+    -moz-transition-timing-function: ease-out;
+    transition-property: height;
+    transition-duration: 0.2s;
+    transition-timing-function: ease-out;
+    padding-left: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#info_panel.folded div.panelHeader{
+    height: 100%;
+}
+
+#info_panel.folded div.panelHeader a{
+    font-size: 1.4em;
+}
+
+#info_panel.folded{
+    /*width: 26px !important;*/
+}
+
+#info_panel.folded span[ajxp_message_id]{
+    display: none;
+}
+
+#info_panel div.folded_icons{
+    display: none;
+}
+
+#info_panel.folded div.folded_icons{
+    display: block;
+    position: absolute;
+    top: 19px;
+    left: 7px;
+}
+
+#info_panel.folded div.folded_icons span{
+    display: block;
+    margin: 17px 0;
+    font-size: 13px;
+    text-align: center;
+}
+
+#info_panel.folded div.folded_icons span.clickable{
+    cursor: pointer;
+}
+
+div.foldedPanel_tooltip{
+    background-color: #5599FF;
+    border-radius: 0;
+    border-width: 0;
+    border-right: 2px solid #3969B2;
+    box-shadow: none;
+}
+
+div.foldedPanel_tooltip td{
+    color: white;
+    font-size: 11px;
+
+}
+
+div.foldedPanel_tooltip:after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-width: 7px;
+    border-style: solid;
+    border-color: transparent transparent transparent #3969B2;
+    top: 15px;
+    left: 220px;
 }
 
 #info_panel a
@@ -2540,6 +2638,10 @@ td.infoPanelValue
     border-bottom: 1px solid #fff;
 }
 
+.panelContent.scrolling td.infoPanelValue{
+    padding-right: 18px;
+}
+
 td.infoPanelLabel {
     padding: 6px 6px;
     width: 35%;
@@ -2562,6 +2664,10 @@ td.infoPanelLabel {
     background-color: rgba(138, 149, 160, 0.65) !important;
     border-bottom: 0 !important;
 
+}
+
+.panelContent.scrolling div.panelHeader{
+    padding-right: 13px;
 }
 
 tr td.infoPanelLabel
@@ -2966,12 +3072,17 @@ legend a.active {
     width: 160px;
 }
 
+#user_acl{
+    font-size:1.1em;
+}
+
 div#available_roles, div#user_roles{
     padding: 0;
     border: 1px solid #aaa;
     width: 100%;
-    height: 80px;
+    height: 110px;
     overflow:auto;
+    border-radius: 3px;
 }
 
 div#rights_pane{
@@ -2988,15 +3099,12 @@ div.ajxp_role{
     background-color:#FFFFFF;
     border-left:7px solid #DDDDDD;
     cursor:move;
-    margin-left:1px;
-    margin-top:1px;
-    padding:1px 4px;
+    margin: 2px;
+    padding:3px 5px;
+    border-radius: 2px;
 }
 
 div.available_role{
-    filter:alpha(opacity=60);
-    opacity: 0.6;
-    -moz-opacity:0.6;
 }
 
 div.user_role{
@@ -3341,21 +3449,21 @@ div.menu a {
 }
 
 .rootDirChooser li.menuTitle {
-    font-size: 11px;
-    font-weight: bold;
-    padding-top: 2px;
-    padding-left: 5px;
-    padding-right: 25px;
-    padding-bottom: 5px;
-    color: #ccc;
-    border-bottom: 0 solid #ddd;
+    padding: 7px 0 7px 8px;
+    color: rgb(255, 255, 255);
     text-align: left;
-    font-style: italic;
-    display: none;
+    background-color: rgba(255, 255, 255, 0.28);
+    font-size: 13px;
+    /*margin: 1px;*/
+    border-bottom: 1px solid rgb(172, 172, 172);
 }
 
 .menu li.menuTitle{
     display: none;
+}
+
+.menu.rootDirChooser li.menuTitle{
+    display: block;
 }
 
 .menu.desktop.panelHeaderMenu li.menuTitle {
@@ -3432,6 +3540,7 @@ div.menu a {
     padding: 0;
     height: 1px !important;
 }
+
 /* we need explicit enabled class to overcome css deficiences (without creating unnecessary markup) */
 .menu.desktop a.enabled:hover {
     background-color: #73a2d7;
@@ -3450,7 +3559,7 @@ div.menu a {
     font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
     position:absolute;
     z-index: 1500;
-    min-width: 180px;
+    width: 250px !important;
     /* IE */
     width:expression("250px");
     background-color: #666;
@@ -3469,18 +3578,16 @@ div.menu a {
     border: 0;
 }
 
-.rootDirChooser a,
-.bookmarksMenu a
+.rootDirChooser a
 {
     display: block;
     padding: 6px 5px 5px 6px;
     color: #fff;
     letter-spacing: 1px;
-    height: 16px;
+    /*height: 16px;*/
 }
 
-.rootDirChooser a img,
-.bookmarksMenu a img
+.rootDirChooser a img
 {
     margin-right:5px;
 }
@@ -3514,29 +3621,67 @@ div.menu a {
 }
 
 .rootDirChooser li.separator {
+    /*
     border-bottom: 1px solid #fff;
     margin: 1px 1px 0 1px;
     line-height: 1px !important;
     padding: 0;
     height: 1px !important;
+    */
+    border-top: 1px solid rgba(255, 255, 255, 0.98);
+    margin: 0 auto;
+    line-height: 1px !important;
+    height: 0 !important;
+    width: 98%;
+}
+
+.rootDirChooser li.separator.menuTitle{
+    height: auto !important;
+    line-height: 14px !important;
+    border-top: none;
+    padding-top: 7px !important;
+    width: 100%;
+
+}
+
+.menu.menuDetails {
+}
+
+.menu.menuDetails a{
+    line-height: 17px;
+    padding: 10px 5px;
+}
+
+.menu.menuDetails span.ajxp_icon_span{
+    float: left;
+    padding: 3px 9px 15px 4px;
+    font-size: 18px;
+}
+
+.menu.menuDetails span.menu_label{
+    font-size: 14px;
+    display: block;
+}
+
+.menu.menuDetails span.menu_description{
+    display: block;
+    letter-spacing: 0;
+    line-height: 13px;
+}
+
+.menu.menuDetails img{
+    display: none;
 }
 
 
-.bookmarksMenu
-{
-    font-size: 11px;
-    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
-    position:absolute;
-    z-index: 1500;
-    border: 1px solid #D1D2D0;
-    width: 200px;
-    padding: 2px;
+.rightAlignMenu{
+    width: 180px !important;
 }
+
 
 .rightAlignMenu a{
     padding: 6px 5px 5px 20px;
     text-align:right;
-    height: 16px;
     letter-spacing: 1px;
 }
 
@@ -3577,10 +3722,16 @@ div.menu a {
 
 .menuActions.moreActions{
     margin-top: 0 !important;
+    z-index: 1;
 }
 .menuActions.moreActions span{
     color: #ffffff;
     cursor: pointer;
+    width: 16px;
+    display: inline-block;
+    text-align: left;
+    font-size: 1.2em;
+    text-shadow: 1px 1px 1px #676767;
 }
 
 .menuActions a:hover
@@ -3938,6 +4089,9 @@ td.ip_geo_cell{
 
 #AjxpConnexion-loader img{
     height:6px;
+/* MODIFICATO DA NOI */
+    margin-top: 70px;*/
+/* FINE MODIFICA */
 }
 
 #ajxp_link_form span.icon-envelope-alt {
@@ -3986,6 +4140,10 @@ td.ip_geo_cell{
     height: 28px;
 }
 
+#workspace_toolbar a#ls_button{
+    display: none;
+}
+
 #create_button {
     /*padding: 7px 10px 10px 10px;*/
     margin-right: 0;
@@ -4012,4 +4170,87 @@ td.ip_geo_cell{
 
 .custom_top_title{
     color: white;
+}
+
+#action_instance_user_create_repository {
+    font-size: 14px;
+    line-height: 21px;
+}
+
+/* rotation animation */
+@-webkit-keyframes rotate {
+    from { -webkit-transform:rotate(0deg); }
+    to { -webkit-transform:rotate(360deg); }
+}
+
+@-moz-keyframes rotate {
+    from { -moz-transform:rotate(0deg); }
+    to { -moz-transform:rotate(360deg); }
+}
+
+@-ms-keyframes rotate {
+    from { -ms-transform:rotate(0deg); }
+    to { -ms-transform:rotate(360deg); }
+}
+
+@-o-keyframes rotate {
+    from { -o-transform:rotate(0deg); }
+    to { -o-transform:rotate(360deg); }
+}
+
+.rotating, .icon-spinner {
+    -webkit-transform-origin: 50% 50%;
+    -webkit-animation-name: rotate;
+    -webkit-animation-duration: 1.0s;
+    -webkit-animation-iteration-count: infinite;
+    -webkit-animation-timing-function: linear;
+    -moz-transform-origin: 50% 50%;
+    -moz-animation-name: rotate;
+    -moz-animation-duration: 1.5s;
+    -moz-animation-iteration-count: infinite;
+    -moz-animation-timing-function: linear;
+    -ms-transform-origin: 50% 50%;
+    -ms-animation-name: rotate;
+    -ms-animation-duration: 1.5s;
+    -ms-animation-iteration-count: infinite;
+    -ms-animation-timing-function: linear;
+    -o-transform-origin: 50% 50%;
+    -o-animation-name: rotate;
+    -o-animation-duration: 1.5s;
+    -o-animation-iteration-count: infinite;
+    -o-animation-timing-function: linear;
+}
+
+.icon-spinner{
+    display: block !important;
+    text-align: center;
+}
+
+.icon-spinner.spinner_large{
+    font-size: 22px;
+}
+
+.events_menu span.icon-spinner{
+    display: block !important;
+    text-align: center;
+    width: 14px !important;
+    height: 16px !important;
+    float: left;
+}
+
+
+::-webkit-input-placeholder {
+   color: #828282;
+}
+
+:-moz-placeholder { /* Firefox 18- */
+   color: #828282;  
+}
+
+::-moz-placeholder {  /* Firefox 19+ */
+   color: #828282;  
+}
+
+:-ms-input-placeholder {  
+   color: #828282;  
 }

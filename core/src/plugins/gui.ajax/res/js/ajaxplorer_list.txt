@@ -34,7 +34,6 @@ js/ajaxplorer/class.AjxpTabulator.js
 js/ajaxplorer/class.AjxpSimpleTabs.js
 js/ajaxplorer/class.RepositorySelect.js
 js/ajaxplorer/class.RepositorySimpleLabel.js
-js/ajaxplorer/class.Breadcrumb.js
 js/ajaxplorer/class.LocationBar.js
 js/ajaxplorer/class.UserWidget.js
 js/ajaxplorer/class.LogoWidget.js
@@ -62,3 +61,5 @@ js/ajaxplorer/class.FormManager.js
 js/ajaxplorer/class.MultiDownloader.js
 js/ajaxplorer/class.ActivityMonitor.js
 js/ajaxplorer/class.Ajaxplorer.js
+js/ajaxplorer/class.VOSelect.js
+js/ajaxplorer/class.Breadcrumb.js

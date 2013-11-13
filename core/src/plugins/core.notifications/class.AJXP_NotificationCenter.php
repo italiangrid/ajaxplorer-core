@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -49,7 +49,9 @@ class AJXP_NotificationCenter extends AJXP_Plugin
         }catch (Exception $e){
 
         }
-
+        if($this->eventStore === false){
+            $this->pluginConf["USER_EVENTS"] = false;
+        }
     }
 
     protected function parseSpecificContributions(&$contribNode){
@@ -70,7 +72,7 @@ class AJXP_NotificationCenter extends AJXP_Plugin
         if($this->eventStore){
             AJXP_Controller::applyHook("msg.instant",array(
                 "<reload_user_feed/>",
-                $notification->getNode()->getRepositoryId(),
+                AJXP_REPO_SCOPE_ALL,
                 $notification->getTarget()
             ));
             $this->eventStore->persistAlert($notification);
@@ -88,8 +90,9 @@ class AJXP_NotificationCenter extends AJXP_Plugin
         $repository = ConfService::getRepositoryById($repoId);
         $repositoryScope = $repository->securityScope();
         $repositoryScope = ($repositoryScope !== false ? $repositoryScope : "ALL");
+        $repositoryOwner = $repository->hasOwner() ? $repository->getOwner() : null;
 
-        $this->eventStore->persistEvent("node.change", func_get_args(), $repoId, $repositoryScope, $userId, $userGroup);
+        $this->eventStore->persistEvent("node.change", func_get_args(), $repoId, $repositoryScope, $repositoryOwner, $userId, $userGroup);
 
     }
 
@@ -97,6 +100,12 @@ class AJXP_NotificationCenter extends AJXP_Plugin
 
         if(!$this->eventStore) return;
         $u = AuthService::getLoggedUser();
+        if($u == null) {
+            if($httpVars["format"] == "html") return;
+            AJXP_XMLWriter::header();
+            AJXP_XMLWriter::close();
+            return;
+        }
         $userId = $u->getId();
         $userGroup = $u->getGroupPath();
         $authRepos = array();
@@ -110,7 +119,6 @@ class AJXP_NotificationCenter extends AJXP_Plugin
             }
         }
         $res = $this->eventStore->loadEvents($authRepos, $userId, $userGroup, 0, 10);
-        if(!count($res)) return;
         $mess = ConfService::getMessages();
         $format = "html";
         if(isSet($httpVars["format"])){
@@ -126,6 +134,7 @@ class AJXP_NotificationCenter extends AJXP_Plugin
         // APPEND USER ALERT IN THE SAME QUERY FOR NOW
         $this->loadUserAlerts("", array_merge($httpVars, array("skip_container_tags" => "true")), $fileVars);
         restore_error_handler();
+        $index = 1;
         foreach($res as $n => $object){
             $args = $object->arguments;
             $oldNode = (isSet($args[0]) ? $args[0] : null);
@@ -142,6 +151,10 @@ class AJXP_NotificationCenter extends AJXP_Plugin
                     echo("</li>");
                 }else{
                     $node = $notif->getNode();
+                    if($node == null){
+                        AJXP_Logger::logAction("Warning : Empty node stored in notification ".$notif->getAuthor()."/ ".$notif->getAction());
+                        continue;
+                    }
                     try{
                         $node->loadNodeInfo();
                     }catch (Exception $e){
@@ -150,11 +163,21 @@ class AJXP_NotificationCenter extends AJXP_Plugin
                     $node->event_description = ucfirst($notif->getDescriptionBlock()) . " ".$mess["notification.tpl.block.user_link"] ." ". $notif->getAuthor();
                     $node->event_description_long = $notif->getDescriptionLong(true);
                     $node->event_date = AJXP_Utils::relativeDate($notif->getDate(), $mess);
-                    $node->repository_id = $node->getRepository()->getUniqueId();
-                    if($node->repository_id != $crtRepId && $node->getRepository()->getDisplay() != null){
-                        $node->event_repository_label = "[".$node->getRepository()->getDisplay()."]";
+                    $node->event_id = $object->event_id;
+                    if($node->getRepository() != null){
+                        $node->repository_id = ''.$node->getRepository()->getId();
+                        if($node->repository_id != $crtRepId && $node->getRepository()->getDisplay() != null){
+                            $node->event_repository_label = "[".$node->getRepository()->getDisplay()."]";
+                        }
                     }
                     $node->event_author = $notif->getAuthor();
+                    // Replace PATH, to make sure they will be distinct children of the loader node
+                    $node->real_path = $node->getPath();
+                    $node->setLabel(basename($node->getPath()));
+                    $url = parse_url($node->getUrl());
+                    $node->setUrl($url["scheme"]."://".$url["host"]."/notification_".$index);
+                    $index ++;
+
                     AJXP_XMLWriter::renderAjxpNode($node);
                 }
             }
@@ -168,6 +191,15 @@ class AJXP_NotificationCenter extends AJXP_Plugin
     }
 
 
+    public function dismissUserAlert($actionName, $httpVars, $fileVars){
+        if(!$this->eventStore) return;
+        $alertId = $httpVars["alert_id"];
+        $oc = 1;
+        if(isSet($httpVars["occurrences"])) $oc = intval($httpVars["occurrences"]);
+        $this->eventStore->dismissAlertById($alertId, $oc);
+    }
+
+
     public function loadUserAlerts($actionName, $httpVars, $fileVars){
 
         if(!$this->eventStore) return;
@@ -178,6 +210,9 @@ class AJXP_NotificationCenter extends AJXP_Plugin
             $repositoryFilter = $httpVars["repository_id"];
         }
         $res = $this->eventStore->loadAlerts($userId, $repositoryFilter);
+        if($repositoryFilter == null){
+            $repositoryFilter = ConfService::getRepository()->getId();
+        }
         if(!count($res)) return;
 
         $format = $httpVars["format"];
@@ -192,7 +227,6 @@ class AJXP_NotificationCenter extends AJXP_Plugin
             }
         }
         $cumulated = array();
-        $notification = new AJXP_Notification();
         foreach ($res as $notification){
             if($format == "html"){
                 echo("<li>");
@@ -201,6 +235,7 @@ class AJXP_NotificationCenter extends AJXP_Plugin
             }else{
                 $node = $notification->getNode();
                 $path = $node->getPath();
+
                 if(isSet($cumulated[$path])){
                     $cumulated[$path]->event_occurence ++;
                     continue;
@@ -210,24 +245,39 @@ class AJXP_NotificationCenter extends AJXP_Plugin
                 }catch (Exception $e){
                     continue;
                 }
+                $node->event_is_alert = true;
                 $node->event_description = ucfirst($notification->getDescriptionBlock()) . " ".$mess["notification.tpl.block.user_link"] ." ". $notification->getAuthor();
                 $node->event_description_long = $notification->getDescriptionLong(true);
                 $node->event_date = AJXP_Utils::relativeDate($notification->getDate(), $mess);
                 $node->event_type = "alert";
-                $node->repository_id = $node->getRepository()->getUniqueId();
-                if($node->repository_id != $repositoryFilter && $node->getRepository()->getDisplay() != null){
-                    $node->event_repository_label = "[".$node->getRepository()->getDisplay()."]";
+                $node->alert_id = $notification->alert_id;
+                if($node->getRepository() != null){
+                    $node->repository_id = ''.$node->getRepository()->getId();
+                    if($node->repository_id != $repositoryFilter && $node->getRepository()->getDisplay() != null){
+                        $node->event_repository_label = "[".$node->getRepository()->getDisplay()."]";
+                    }
+                }else{
+                    $node->event_repository_label = "[N/A]";
                 }
                 $node->event_author = $notification->getAuthor();
-                $notification->event_occurence = 1;
-                $cumulated[$path] = $node; //AJXP_XMLWriter::renderAjxpNode($node);
+                $node->event_occurence = 1;
+                $cumulated[$path] = $node;
             }
         }
+        $index = 1;
         foreach($cumulated as $nodeToSend){
             if($nodeToSend->event_occurence > 1){
-                $nodeToSend->setLabel(basename($nodeToSend->getPath()) . "(".$nodeToSend->event_occurence.")" );
-                AJXP_XMLWriter::renderAjxpNode($nodeToSend);
+                $nodeToSend->setLabel(basename($nodeToSend->getPath()) . " (". $nodeToSend->event_occurence .")" );
+            }else{
+                $nodeToSend->setLabel(basename($nodeToSend->getPath()));
             }
+            // Replace PATH
+            $nodeToSend->real_path = $path;
+            $url = parse_url($nodeToSend->getUrl());
+            $nodeToSend->setUrl($url["scheme"]."://".$url["host"]."/alert_".$index);
+            $index ++;
+            AJXP_XMLWriter::renderAjxpNode($nodeToSend);
+
         }
         if(!$skipContainingTags){
             if($format == "html"){

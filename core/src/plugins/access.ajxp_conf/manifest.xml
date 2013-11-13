@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ajxpdriver name="ajxp_conf" label="CONF_MESSAGE[Admin Driver]" description="CONF_MESSAGE[Access AjaXplorer configuration data.]" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="file:../core.ajaxplorer/ajxp_registry.xsd">
+<ajxpdriver name="ajxp_conf" label="CONF_MESSAGE[Admin Driver]" description="CONF_MESSAGE[Access Pydio configuration data.]" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="file:../core.ajaxplorer/ajxp_registry.xsd">
     <plugin_info>
         <core_relation packaged="true" tested_version="4.2.0"/>
         <plugin_author>Charles du Jeu</plugin_author>
@@ -58,6 +58,7 @@
                         .developerDoc{
                             font-size: 12px !important;
                             line-height: 18px !important;
+                            padding-bottom: 5px;
                         }
                         .developerApiAccess{
                             display: inline-block;
@@ -66,24 +67,35 @@
                         .table_rows_container td{
                             vertical-align:top;
                         }
+                        #pydio-go-pro_button {
+                            background: #fa715c;
+                            border-radius: 4px;
+                            padding: 2px 7px 2px 3px !important;
+                        }
                     </style>
                     <script>
-                        $("vertical_splitter").ajxpPaneObject.paneB._max = 1;
-                        $("vertical_splitter").ajxpPaneObject.options.maxB = 1;
+                        var splitter = $("vertical_splitter").ajxpPaneObject;
+                        splitter.paneB._max = 1;
+                        splitter.options.maxB = 1;
+                        splitter.resizeGroup();
                         document.observe("ajaxplorer:user_logged", function(){
                             if(ajaxplorer.repositoryId == "ajxp_conf"){
-                                $("vertical_splitter").ajxpPaneObject.paneB._max = 1;
-                                $("vertical_splitter").ajxpPaneObject.options.maxB = 1;
+                                splitter.paneB._max = 1;
+                                splitter.options.maxB = 1;
                             }else{
-                                $("vertical_splitter").ajxpPaneObject.paneB._max = 0;
-                                $("vertical_splitter").ajxpPaneObject.options.maxB = 0;
+                                splitter.paneB._max = 0;
+                                splitter.options.maxB = 0;
+                                if(splitter.foldedPane && splitter.foldedPane == splitter.paneB){
+                                    splitter.paneB.setStyle({width:'26px'});
+                                }
                             }
+                            splitter.resizeGroup();
                         });
                     </script>
                     ]]></template_part>
-            <template_part ajxpClass="AjxpTabulator" ajxpId="topPane" ajxpOptions='{"defaultTabId": "folders","tabInfos" : [{"id":"folders","label":"130","iconClass":"icon-folder-open","element":"folder_pane"},{"id":"flagged","label":"147","iconClass":"icon-star","element":"flagged_elements"}],"headerToolbarOptions":{"submenuClassName":"panelHeaderMenu","submenuPosition":"bottom right","submenuOffsetTop":12,"toolbarsList":["filter"],"skipBubbling":true, "skipCarousel":true,"submenuOffsetTop":2}}'><![CDATA[
+            <template_part ajxpClass="AjxpTabulator" theme="vision" ajxpId="topPane" ajxpOptions='{"defaultTabId": "folders","tabInfos" : [{"id":"folders","label":"130","iconClass":"icon-folder-open","element":"folder_pane"},{"id":"flagged","label":"147","iconClass":"icon-star","element":"flagged_elements"}],"headerToolbarOptions":{"submenuClassName":"panelHeaderMenu","submenuPosition":"bottom right","submenuOffsetTop":12,"toolbarsList":["filter"],"skipBubbling":true, "skipCarousel":true,"submenuOffsetTop":2}}'><![CDATA[
                 <div id="folder_pane" ajxpClass="FoldersTree" ajxpOptions='{"display":"dz","replaceScroller":true}' ></div>
-                <div id="flagged_elements" ajxpClass="FetchedResultPane" ajxpOptions='{"nodeProviderProperties":{"get_action":"get_bookmarks", "format":"node_list"}}'></div>
+                <div id="flagged_elements" ajxpClass="FetchedResultPane" ajxpOptions='{"nodeProviderProperties":{"get_action":"get_bookmarks", "format":"node_list"},"reloadOnServerMessage":"tree/reload_bookmarks"}'></div>
             ]]></template_part>
             <component_config className="Splitter::vertical_splitter">
                 <property name="resize" value="100%"/>

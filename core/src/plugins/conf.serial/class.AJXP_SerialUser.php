@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -55,7 +55,24 @@ class AJXP_SerialUser extends AbstractAjxpUser
         $this->registerForSave = array();
     }
 
-    function setGroupPath($groupPath){
+    function setGroupPath($groupPath, $update = false){
+        if($update && isSet($this->groupPath) && $this->groupPath != $groupPath){
+            $children = $this->getChildrenPointer();
+            if(is_array($children)){
+                foreach($children as $userId){
+                    // UPDATE USER GROUP AND ROLES
+                    $u = ConfService::getConfStorageImpl()->createUserObject($userId);
+                    $u->setGroupPath($groupPath);
+                    $r = $u->getRoles();
+                    // REMOVE OLD GROUP ROLES
+                    foreach(array_keys($r) as $role){
+                        if(strpos($role, "AJXP_GRP_/") === 0) $u->removeRole($role);
+                    }
+                    $u->recomputeMergedRole();
+                    $u->save("superuser");
+                }
+            }
+        }
         parent::setGroupPath($groupPath);
         $groups = AJXP_Utils::loadSerialFile(AJXP_VarsFilter::filter($this->storage->getOption("USERS_DIRPATH"))."/groups.ser");
         $groups[$this->getId()] = $groupPath;
@@ -169,6 +186,8 @@ class AJXP_SerialUser extends AbstractAjxpUser
         $fastCheck = $this->storage->getOption("FAST_CHECKS");
         $fastCheck = ($fastCheck == "true" || $fastCheck == true);
         if(isSet($this->registerForSave["rights"]) || $this->create){
+            $filteredRights = $this->rights;
+            if(isSet($filteredRights["ajxp.roles"])) $filteredRights["ajxp.roles"] = $this->filterRolesForSaving($filteredRights["ajxp.roles"]);
             AJXP_Utils::saveSerialFile($this->getStoragePath()."/rights.ser", $this->rights, !$fastCheck);
             AJXP_Utils::saveSerialFile($this->getStoragePath()."/role.ser", $this->personalRole, !$fastCheck);
         }

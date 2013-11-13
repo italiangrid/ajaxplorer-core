@@ -1,22 +1,22 @@
 <?php
 /*
-* Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
-* This file is part of AjaXplorer.
+* Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+* This file is part of Pydio.
 *
-* AjaXplorer is free software: you can redistribute it and/or modify
+* Pydio is free software: you can redistribute it and/or modify
 * it under the terms of the GNU Affero General Public License as published by
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 *
-* AjaXplorer is distributed in the hope that it will be useful,
+* Pydio is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Affero General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+* along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
 *
-* The latest code can be found at <http://www.ajaxplorer.info/>.
+* The latest code can be found at <http://pyd.io/>.
 */
 //  French Translation by Charles du Jeu, corrected by GravuTrad
 $mess=array(
@@ -184,8 +184,8 @@ $mess=array(
 "149"=> "Rafraichir",
 "150"=> "Affichage",
 "151"=> "Changer l'affichage",
-"152"=> "Favoris",
-"153"=> "Ajouter le répertoire courant à MesFavoris",
+"152"=> "Ajouter/retirer le favori",
+"153"=> "Ajouter/retirer la sélection à MesFavoris",
 "154"=> "Nv. Rép.",
 "155"=> "Créer un nouveau répertoire",
 "156"=> "Nv. Fich.",
@@ -199,7 +199,7 @@ $mess=array(
 "164"=> "Déconnexion",
 "165"=> "Paramètres",
 "166"=> "A propos",
-"167"=> "A propos d'AjaXplorer",
+"167"=> "A propos de Pydio",
 "168" => "Connexion",
 "169" => "Déconnexion",
 "170" => "Répertoire Courant :",
@@ -351,7 +351,7 @@ $mess=array(
 "296" => "Copiez l'URL ci dessous:",
 "297" => "Nouv. util",
 "298" => "Créer un nouvel utilisateur",
-"299" => "Nouv. Dépôt.",
+"299" => "Workspaces",
 "300" => "Créer un nouveau dépot",
 "create_repo_accesskey" => "p",
 "create_user_accesskey" => "u",
@@ -425,7 +425,7 @@ $mess=array(
 "367" => "Vous n'êtes pas autorisé à uploader ce type de fichier. Veuillez choisir parmi les extensions suivantes : ",
 "368" => "La sélection a été extraite de l'archive %s dans le répertoire %s",
 "369" => "Raccourci",
-"370" => "Téléchargement public AjaXplorer",
+"370" => "Téléchargement public Pydio",
 "371" => "Un mot de passe est nécessaire pour ce téléchargement",
 "372" => "Dépôt Courant",
 "373" => "Destination",
@@ -444,7 +444,7 @@ $mess=array(
 "389" => "Merci de recopier le code ci-dessous :",
 "390" => "Code",
 "391" => "Pas de dépôt",
-"392" => "Attention, la version de AjaXplorer (%s) a changé, merci de vider votre cache et rafraichir la page.",
+"392" => "Attention, la version de Pydio (%s) a changé, merci de vider votre cache et rafraichir la page.",
 "393" => "Attention, les noms de fichiers sont limités à %s caractères, celui-ci sera tronqué!",
 "394" => "Désolé, pour le moment la fonctionnalité de partage des utilisateurs ne fonctionne pour le driver d'authentification utilisé (les utilisateurs ne sont pas éditables). En revanche le partage de fichier fonctionne.",
 "395" => "L'object que vous avez deposé semble etre un dossier, ces derniers ne peuvent etre envoyés sur le serveur! Etes vous sur de vouloir envoyer ?",
@@ -456,7 +456,7 @@ $mess=array(
 "401" => "Vous pouvez télécharger et installer le logiciel suivant pour recoller les morceaux sur votre ordinateur : ",
 "402" => "http://www.hjsplit.org/",
 "403" => "Préférences WebDAV",
-"404" => "WebDAV est un protocole permettant de 'monter' vos espaces de travail AjaXplorer comme des disques durs réseaux, directement sur votre bureau. Pour activer cette fonctionnalité, cochez la case et entrez un mot de passe s'il vous est demandé.",
+"404" => "WebDAV est un protocole permettant de 'monter' vos espaces de travail Pydio comme des disques durs réseaux, directement sur votre bureau. Pour activer cette fonctionnalité, cochez la case et entrez un mot de passe s'il vous est demandé.",
 "405" => "Pour vous connecter, vous seront demandés une adresse internet, un identifiant et un mot de passe. Utilisez l'URL ci-dessous et vos identifiants standards.",
 "406" => "Activer les partages webDAV.",
 "407" => "Entrez votre mot de passe si c'est la première fois que vous activez webDAV, ou que vous désirez le changer :",
@@ -508,7 +508,7 @@ $mess=array(
 "452" => "Taille des vignettes",
 "453" => "Modifier la taille des vignettes",
 "454" => "Sélectionner des fichiers",
-"455" => "Mes workspaces",
+"455" => "Workspaces",
 "456" => "Plus",
 "457" => "m-à-j",
 "458" => "supprimer",
@@ -523,5 +523,16 @@ $mess=array(
 "465" => "Afficher les autres URLs (monter les workspace séparément)",
 "466" => "Chargement...",
 "467" => "Tous les éléments partagés",
+"468" => "Mes Workspaces",
+"469" => "Partagés avec moi",
+"470" => "Créé %date",
+"471" => "Créé par %user %date",
+"472" => "Partagé par %user",
+"473" => "Partagé par %user %date",
+"474" => "Pas de description",
+"475" => "Fichiers partagés par tous les utilisateurs",
+"476" => "Votre espace personnel",
+"477" => "Selectionnez un fichier ou un répertoire pour voir ses infos s'afficher ici",
+"478" => "No results found",
 /* END SENTENCE */
 );

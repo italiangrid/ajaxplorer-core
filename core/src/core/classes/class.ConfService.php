@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -144,7 +144,9 @@ class ConfService
                 $plugin = false;
             }
         }
-
+        if($plugin !== false){
+            AJXP_PluginsService::getInstance()->setPluginActive($plugin->getType(), $plugin->getName(), true, $plugin);
+        }
         return $plugin;
 
     }
@@ -164,13 +166,32 @@ class ConfService
 	public static function backgroundActionsSupported(){
 		return function_exists("mcrypt_create_iv") && ConfService::getCoreConf("CMDLINE_ACTIVE");
 	}
-	
+
+    /**
+     * @var AbstractConfDriver
+     */
+    private static $tmpConfStorageImpl;
+    /**
+     * @var AbstractAuthDriver
+     */
+    private static $tmpAuthStorageImpl;
+
+    /**
+     * @param $confStorage AbstractConfDriver
+     * @param $authStorage AbstractAuthDriver
+     */
+    public static function setTmpStorageImplementations($confStorage, $authStorage){
+        self::$tmpConfStorageImpl = $confStorage;
+        self::$tmpAuthStorageImpl = $authStorage;
+    }
+
 	/**
 	 * Get conf driver implementation
 	 *
 	 * @return AbstractConfDriver
 	 */
 	public static function getConfStorageImpl(){
+        if(isSet(self::$tmpConfStorageImpl)) return self::$tmpConfStorageImpl;
 		return AJXP_PluginsService::getInstance()->getPluginById("core.conf")->getConfImpl();
 	}
 
@@ -180,6 +201,7 @@ class ConfService
 	 * @return AbstractAuthDriver
 	 */
 	public static function getAuthDriverImpl(){
+        if(isSet(self::$tmpAuthStorageImpl)) return self::$tmpAuthStorageImpl;
         return AJXP_PluginsService::getInstance()->getPluginById("core.auth")->getAuthImpl();
 	}
 
@@ -315,7 +337,8 @@ class ConfService
      */
     public static function getAccessibleRepositories($userObject=null, $details=false, $labelOnly = false, $skipShared = false){
         $result = array();
-        foreach (ConfService::getRepositoriesList() as $repositoryId => $repositoryObject)
+        $allReps = ConfService::getRepositoriesList("all");
+        foreach ($allReps as $repositoryId => $repositoryObject)
         {
             if(!ConfService::repositoryIsAccessible($repositoryId, $repositoryObject, $userObject, $details, $skipShared)){
                 continue;
@@ -518,6 +541,9 @@ class ConfService
 		if(isSet($repository["DISPLAY_ID"])){
 			$repo->setDisplayStringId($repository["DISPLAY_ID"]);
 		}
+		if(isSet($repository["DESCRIPTION_ID"])){
+			$repo->setDescription($repository["DESCRIPTION_ID"]);
+		}
 		if(isSet($repository["AJXP_SLUG"])){
 			$repo->setSlug($repository["AJXP_SLUG"]);
 		}
@@ -688,7 +714,8 @@ class ConfService
      */
 	public static function zipEnabled()
 	{
-		return (function_exists("gzopen")?true:false);		
+        if(ConfService::getCoreConf("DISABLE_ZIP_BROWSING") === true) return false;
+		return (function_exists("gzopen")?true:false);
 	}
     /**
      * Get the list of all "conf" messages

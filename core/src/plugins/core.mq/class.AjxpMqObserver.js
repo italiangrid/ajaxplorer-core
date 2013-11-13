@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2012 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -30,6 +30,9 @@ Class.create("AjxpMqObserver", {
 
     initialize : function(){
         "use strict";
+
+        if(window.ajxpMinisite) return;
+
         this.clientId = window.ajxpBootstrap.parameters.get("SECURE_TOKEN");
         var configs = ajaxplorer.getPluginConfigs("mq");
 
@@ -50,7 +53,11 @@ Class.create("AjxpMqObserver", {
                         this.ws.close();
 
                     } else {
-                        this.ws.send("register:" + repoId);
+                        try{
+                            this.ws.send("register:" + repoId);
+                        }catch(e){
+                            if(console) console.log('Error while sending WebSocket message: '+ e.message);
+                        }
                     }
                 }else{
                     if(repoId){
@@ -117,8 +124,10 @@ Class.create("AjxpMqObserver", {
         }));
         conn.discrete = true;
         conn.onComplete = function(transport){
-            ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-            ajaxplorer.notify("server_message", transport.responseXML);
+            if(transport.responseXML){
+                ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+                ajaxplorer.notify("server_message", transport.responseXML);
+            }
         };
         conn.sendAsync();
     }

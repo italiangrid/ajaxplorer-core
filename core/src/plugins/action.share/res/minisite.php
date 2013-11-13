@@ -1,6 +1,7 @@
+<!DOCTYPE html>
 <html xmlns:ajxp>
 	<head>
-		<title>AjaXplorer</title>
+        <title>Pydio</title>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 		<link rel="icon" type="image/x-png" href="AJXP_PATH_TO_ROOT/plugins/gui.ajax/res/themes/vision/images/html-folder.png">
@@ -14,11 +15,20 @@
                 font-weight: normal;
                 padding: 10px 0 0 5px;
                 color: rgb(111,123,136);
-                background-image: url('AJXP_PATH_TO_ROOT/plugins/gui.ajax/AjxpLogo250.png');
+                margin-right: 5px;
+            }
+            .widget_logo {
+                background-image: url('AJXP_PATH_TO_ROOT/plugins/gui.ajax/PydioLogo250.png');
                 background-repeat: no-repeat;
-                background-position: right 9px;
+                background-position: right 5px;
                 background-size: 170px;
                 margin-right: 5px;
+                position: absolute;
+                top: 0;
+                right: 0;
+                height: 90px;
+                width: 180px;
+                z-index: 50;
             }
 			#ajxp_shared_folder{
 				width:100%;
@@ -29,6 +39,7 @@
 			}
             .action_bar{
                 background-color: #ffffff;
+                height: 41px !important;
             }
             .action_bar > .toolbarGroup{
                 height: auto;
@@ -47,6 +58,7 @@
                 margin-left: -8px;
                 min-width: 0;
             }
+            /*
             div#inline_toolbar a {
                 font-size: 11px;
                 border: 1px solid rgba(111, 123, 136, 0.42);
@@ -60,6 +72,7 @@
                 background-color: rgba(111, 123, 136, 0.09);
                 box-shadow: inset 1px 1px 1px white;
             }
+            */
             .ajxpNodeProvider span.actionbar_button_label {
                 display: none;
             }
@@ -96,7 +109,7 @@
 		<script type="text/javascript">
 			var ajaxplorer, MessageHash={};
 			var startParameters = {
-				"BOOTER_URL":"AJXP_PATH_TO_ROOT/index.php?get_action=get_boot_conf&goto=AJXP_START_REPOSITORY/",
+				"BOOTER_URL":"AJXP_PATH_TO_ROOT/index_shared.php?get_action=get_boot_conf&goto=AJXP_START_REPOSITORY&minisite_session=true",
 				"EXT_REP":"\/", 
 				"MAIN_ELEMENT":"ajxp_shared_folder",
 				"SERVER_PREFIX_URI": "AJXP_PATH_TO_ROOT/"
@@ -108,12 +121,24 @@
 			window.ajxpBootstrap = new AjxpBootstrap(startParameters);
             window.ajxpMinisite = true;
             window.onunload = function(){
-                if(ajaxplorer) ajaxplorer.actionBar.fireAction("logout");
+                if(ajaxplorer && !Prototype.Browser.Gecko) ajaxplorer.actionBar.fireAction("logout");
             }
+            document.observe("dom:loaded", function(){
+                var cookieEnabled=(navigator.cookieEnabled)? true : false
+                   if (typeof navigator.cookieEnabled=="undefined" && !cookieEnabled){
+                       document.cookie="testcookie";
+                       cookieEnabled=(document.cookie.indexOf("testcookie")!=-1)? true : false;
+                   }
+                   if(!cookieEnabled){
+                       alert("AJXP_MESSAGE[share_center.76]");
+                   }
+            });
 		</script>
+        <noscript><h2>AJXP_MESSAGE[share_center.77]</h2></noscript>
 	</head>
 
 	<body marginheight="0" marginwidth="0" leftmargin="0" topmargin="0" class="AJXP_PRELOGED_USER">
+        <div class="widget_logo"></div>
         <div class="widget_title">AJXP_REPOSITORY_LABEL</div>
         <div id="ajxp_shared_folder" ajxpClass="AjxpPane" ajxpOptions='{"fit":"height", "fitParent":"window"}'></div>
 	</body>

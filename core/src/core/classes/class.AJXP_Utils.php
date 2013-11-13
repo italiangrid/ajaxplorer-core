@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die('Access not allowed');
 
@@ -24,6 +24,27 @@ define('AJXP_SANITIZE_HTML', 1);
 define('AJXP_SANITIZE_HTML_STRICT', 2);
 define('AJXP_SANITIZE_ALPHANUM', 3);
 define('AJXP_SANITIZE_EMAILCHARS', 4);
+
+// THESE ARE DEFINED IN bootstrap_context.php
+// REPEAT HERE FOR BACKWARD COMPATIBILITY.
+if(!defined('PBKDF2_HASH_ALGORITHM')){
+
+    define("PBKDF2_HASH_ALGORITHM", "sha256");
+    define("PBKDF2_ITERATIONS", 1000);
+    define("PBKDF2_SALT_BYTE_SIZE", 24);
+    define("PBKDF2_HASH_BYTE_SIZE", 24);
+
+    define("HASH_SECTIONS", 4);
+    define("HASH_ALGORITHM_INDEX", 0);
+    define("HASH_ITERATION_INDEX", 1);
+    define("HASH_SALT_INDEX", 2);
+    define("HASH_PBKDF2_INDEX", 3);
+
+    define("USE_OPENSSL_RANDOM", false);
+
+}
+
+
 /**
  * Various functions used everywhere, static library
  * @package AjaXplorer
@@ -71,6 +92,7 @@ class AJXP_Utils
         //
         // REMOVE ALL "../" TENTATIVES
         //
+        $path = str_replace(chr(0), "", $path);
         $dirs = explode('/', $path);
         for ($i = 0; $i < count($dirs); $i++)
         {
@@ -163,14 +185,32 @@ class AJXP_Utils
      */
     public static function getAjxpTmpDir()
     {
-        if (ConfService::getCoreConf("AJXP_TMP_DIR") != null) {
-            return ConfService::getCoreConf("AJXP_TMP_DIR");
+        $conf = ConfService::getCoreConf("AJXP_TMP_DIR");
+        if (!empty($conf)) {
+            return $conf;
         }
         if (defined("AJXP_TMP_DIR") && AJXP_TMP_DIR != "") {
             return AJXP_TMP_DIR;
         }
         return realpath(sys_get_temp_dir());
     }
+
+    public static function detectApplicationFirstRun(){
+        return !file_exists(AJXP_CACHE_DIR."/first_run_passed");
+    }
+
+    public static function setApplicationFirstRunPassed(){
+        @file_put_contents(AJXP_CACHE_DIR."/first_run_passed", "true");
+    }
+
+    public static function forwardSlashDirname($path){
+        return (DIRECTORY_SEPARATOR === "\\" ? str_replace("\\", "/", dirname($path)): dirname($path));
+    }
+
+    public static function forwardSlashBasename($path){
+        return (DIRECTORY_SEPARATOR === "\\" ? str_replace("\\", "/", basename($path)): basename($path));
+    }
+
 
     /**
      * Parse a Comma-Separated-Line value
@@ -258,11 +298,14 @@ class AJXP_Utils
                 if ($repository != null) {
                     $parameters["repository_id"] = $repository->getId();
                 }
+            }else{
+                $parameters["repository_id"] = $repository->getId();
             }
             require_once(AJXP_BIN_FOLDER . "/class.SystemTextEncoding.php");
             if (AuthService::usersEnabled()) {
                 $loggedUser = AuthService::getLoggedUser();
                 if ($loggedUser != null && $loggedUser->canSwitchTo($parameters["repository_id"])) {
+                    $output["FORCE_REGISTRY_RELOAD"] = true;
                     $output["EXT_REP"] = SystemTextEncoding::toUTF8(urldecode($parameters["folder"]));
                     $loggedUser->setArrayPref("history", "last_repository", $parameters["repository_id"]);
                     $loggedUser->setPref("pending_folder", SystemTextEncoding::toUTF8(AJXP_Utils::decodeSecureMagic($parameters["folder"])));
@@ -1227,7 +1270,7 @@ class AJXP_Utils
      * @param string $format
      * @throws Exception
      */
-    static function saveSerialFile($filePath, $value, $createDir = true, $silent = false, $format="ser")
+    static function saveSerialFile($filePath, $value, $createDir = true, $silent = false, $format="ser", $jsonPrettyPrint = false)
     {
         $filePath = AJXP_VarsFilter::filter($filePath);
         if ($createDir && !is_dir(dirname($filePath))){
@@ -1241,13 +1284,33 @@ class AJXP_Utils
         try {
             $fp = fopen($filePath, "w");
             if($format == "ser") $content = serialize($value);
-            else if($format == "json") $content = json_encode($value);
+            else if($format == "json") {
+                $content = json_encode($value);
+                if($jsonPrettyPrint) $content = self::prettyPrintJSON($content);
+            }
             fwrite($fp, $content);
             fclose($fp);
         } catch (Exception $e) {
             if ($silent) return;
             else throw $e;
         }
+        
+        ###### MODIFICATO DA NOI (per andare direttamente nel repo Grid)########## 
+/* 
+       include ('/opt/dm/ajp/plugins/access.lfc/config.php'); 
+	    if($_COOKIE['New_user']=="true"){    
+		    $user_id=$_GET["userid"];
+			error_log("array sono qua $user_id");
+		    $file_path = '/opt/dm/ajp/data/plugins/auth.serial/'.$user_id.'/prefs.ser';
+		    error_log("array file_path is $file_path");
+		    if(is_file($file_path)){
+				error_log("array sono dentrooo");
+				file_put_contents($file_path, 'a:1:{s:24:"force_default_repository";s:32:"'.$config['repo_local_id'].'";}');
+			}
+		setcookie("New_user", "", time() - 3600, '', '', true, false);
+		}
+*/
+		####### FINE MODIFICA ###### 
     }
 
     /**
@@ -1516,11 +1579,14 @@ class AJXP_Utils
                 $bootStorage = ConfService::getBootConfStorageImpl();
                 $configs = $bootStorage->loadPluginConfig("core", "conf");
                 $params = $configs["DIBI_PRECONFIGURATION"];
+                if(!is_array($params)){
+                     throw new Exception("Empty SQL default connexion, there is something wrong with your setup! You may have switch to an SQL-based plugin without defining a connexion.");
+                }
             }else{
                 unset($params["group_switch_value"]);
             }
             foreach($params as $k => $v){
-                $params[array_pop(explode("_", $k, 2))] = $v;
+                $params[array_pop(explode("_", $k, 2))] = AJXP_VarsFilter::filter($v);
                 unset($params[$k]);
             }
         }
@@ -1529,26 +1595,178 @@ class AJXP_Utils
 
     public static function runCreateTablesQuery($p, $file){
         require_once(AJXP_BIN_FOLDER."/dibi.compact.php");
-        dibi::connect($p);
-        $sql = file_get_contents($file);
-        $parts = explode("CREATE TABLE", $sql);
         $result = array();
-        foreach($parts as $createPart){
-            if(empty($createPart)) continue;
-            $sqlPart = trim("CREATE TABLE".$createPart);
-            try{
-                dibi::nativeQuery($sqlPart);
-                $resKey = str_replace("\n", "", substr($sqlPart, 0, 50))."...";
-                $result[] = "OK: $resKey executed successfully";
-            }catch (DibiException $e){
-                $result[] = "ERROR! $sqlPart failed";
+        if($p["driver"] == "sqlite" || $p["driver"] == "sqlite3"){
+            if(!file_exists(dirname($p["database"]))){
+                @mkdir(dirname($p["database"]), 0755, true);
             }
+            dibi::connect($p);
+            $file = dirname($file) ."/". str_replace(".sql", ".sqlite", basename($file) );
+            $sql = file_get_contents($file);
+            dibi::begin();
+            $parts = explode("CREATE TABLE", $sql);
+            foreach($parts as $createPart){
+                if(empty($createPart)) continue;
+                $sqlPart = trim("CREATE TABLE".$createPart);
+                try{
+                    dibi::nativeQuery($sqlPart);
+                    $resKey = str_replace("\n", "", substr($sqlPart, 0, 50))."...";
+                    $result[] = "OK: $resKey executed successfully";
+                }catch (DibiException $e){
+                    $result[] = "ERROR! $sqlPart failed";
+                }
+            }
+            $message = implode("\n", $result);
+            dibi::commit();
+            dibi::disconnect();
+        }else{
+            dibi::connect($p);
+            $sql = file_get_contents($file);
+            $parts = explode("CREATE TABLE", $sql);
+            foreach($parts as $createPart){
+                if(empty($createPart)) continue;
+                $sqlPart = trim("CREATE TABLE".$createPart);
+                try{
+                    dibi::nativeQuery($sqlPart);
+                    $resKey = str_replace("\n", "", substr($sqlPart, 0, 50))."...";
+                    $result[] = "OK: $resKey executed successfully";
+                }catch (DibiException $e){
+                    $result[] = "ERROR! $sqlPart failed";
+                }
+            }
+            $message = implode("\n", $result);
+            dibi::disconnect();
         }
-        $message = implode("\n", $result);
-        dibi::disconnect();
         if(strpos($message, "ERROR!")) return $message;
         else return "SUCCESS:".$message;
 
+    }
+
+
+    /*
+     * PBKDF2 key derivation function as defined by RSA's PKCS #5: https://www.ietf.org/rfc/rfc2898.txt
+     * $algorithm - The hash algorithm to use. Recommended: SHA256
+     * $password - The password.
+     * $salt - A salt that is unique to the password.
+     * $count - Iteration count. Higher is better, but slower. Recommended: At least 1000.
+     * $key_length - The length of the derived key in bytes.
+     * $raw_output - If true, the key is returned in raw binary format. Hex encoded otherwise.
+     * Returns: A $key_length-byte key derived from the password and salt.
+     *
+     * Test vectors can be found here: https://www.ietf.org/rfc/rfc6070.txt
+     *
+     * This implementation of PBKDF2 was originally created by https://defuse.ca
+     * With improvements by http://www.variations-of-shadow.com
+     */
+    static function pbkdf2_apply($algorithm, $password, $salt, $count, $key_length, $raw_output = false) {
+
+        $algorithm = strtolower($algorithm);
+
+        if(!in_array($algorithm, hash_algos(), true))
+            die('PBKDF2 ERROR: Invalid hash algorithm.');
+        if($count <= 0 || $key_length <= 0)
+            die('PBKDF2 ERROR: Invalid parameters.');
+
+        $hash_length = strlen(hash($algorithm, "", true));
+        $block_count = ceil($key_length / $hash_length);
+
+        $output = "";
+
+        for($i = 1; $i <= $block_count; $i++) {
+            // $i encoded as 4 bytes, big endian.
+            $last = $salt . pack("N", $i);
+            // first iteration
+            $last = $xorsum = hash_hmac($algorithm, $last, $password, true);
+
+            // perform the other $count - 1 iterations
+            for ($j = 1; $j < $count; $j++) {
+                $xorsum ^= ($last = hash_hmac($algorithm, $last, $password, true));
+            }
+
+            $output .= $xorsum;
+        }
+
+        if($raw_output)
+            return substr($output, 0, $key_length);
+        else
+            return bin2hex(substr($output, 0, $key_length));
+    }
+
+
+    // Compares two strings $a and $b in length-constant time.
+    static function pbkdf2_slow_equals($a, $b) {
+        $diff = strlen($a) ^ strlen($b);
+        for($i = 0; $i < strlen($a) && $i < strlen($b); $i++)
+        {
+            $diff |= ord($a[$i]) ^ ord($b[$i]);
+        }
+
+        return $diff === 0;
+    }
+
+    static function pbkdf2_validate_password($password, $correct_hash) {
+        $params = explode(":", $correct_hash);
+
+        if(count($params) < HASH_SECTIONS){
+            if(strlen($correct_hash) == 32 && count($params) == 1){
+                return md5($password) == $correct_hash;
+            }
+            return false;
+        }
+
+        $pbkdf2 = base64_decode($params[HASH_PBKDF2_INDEX]);
+        return self::pbkdf2_slow_equals(
+            $pbkdf2,
+             self::pbkdf2_apply(
+                $params[HASH_ALGORITHM_INDEX],
+                $password,
+                $params[HASH_SALT_INDEX],
+                (int)$params[HASH_ITERATION_INDEX],
+                strlen($pbkdf2),
+                true
+            )
+        );
+    }
+
+
+    static function pbkdf2_create_hash($password) {
+        // format: algorithm:iterations:salt:hash
+        $salt = base64_encode(mcrypt_create_iv(PBKDF2_SALT_BYTE_SIZE, MCRYPT_DEV_URANDOM));
+        return PBKDF2_HASH_ALGORITHM . ":" . PBKDF2_ITERATIONS . ":" .  $salt . ":" .
+        base64_encode(self::pbkdf2_apply(
+            PBKDF2_HASH_ALGORITHM,
+            $password,
+            $salt,
+            PBKDF2_ITERATIONS,
+            PBKDF2_HASH_BYTE_SIZE,
+            true
+        ));
+    }
+
+    /**
+     * generates a random password, uses base64: 0-9a-zA-Z
+     * @param int [optional] $length length of password, default 24 (144 Bit)
+     * @return string password
+     */
+    static function generateRandomString($length = 24) {
+        if(function_exists('openssl_random_pseudo_bytes') && USE_OPENSSL_RANDOM) {
+            $password = base64_encode(openssl_random_pseudo_bytes($length, $strong));
+            if($strong == TRUE)
+                return substr(str_replace(array("/","+"), "", $password), 0, $length); //base64 is about 33% longer, so we need to truncate the result
+        }
+
+        //fallback to mt_rand if php < 5.3 or no openssl available
+        $characters = '0123456789';
+        $characters .= 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        $charactersLength = strlen($characters)-1;
+        $password = '';
+
+        //select some random characters
+        for ($i = 0; $i < $length; $i++) {
+            $password .= $characters[mt_rand(0, $charactersLength)];
+        }
+
+        return $password;
     }
 
 }

@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -28,7 +28,13 @@ defined('AJXP_EXEC') or die( 'Access not allowed');
  * @subpackage Log
  */
 class sqlLogDriver extends AbstractLogDriver {
-	
+
+
+    /**
+     * @var Array
+     */
+    private $sqlDriver;
+
 	/**
 	 * Initialise the driver.
 	 *
@@ -48,7 +54,15 @@ class sqlLogDriver extends AbstractLogDriver {
 			exit(1);
 		}
 	}
-	
+
+    public function performChecks(){
+        if(!isSet($this->options)) return;
+        $test = AJXP_Utils::cleanDibiDriverParameters($this->options["SQL_DRIVER"]);
+        if(!count($test)){
+            throw new Exception("Please define an SQL connexion in the core configuration");
+        }
+    }
+
 	/**
 	 * Simple function to format Date objects to fit MySQL expected where condition
 	 *
@@ -56,7 +70,8 @@ class sqlLogDriver extends AbstractLogDriver {
 	 * @return String Date string formatted to fit a MySQL where condition.
 	 */
 	function toMysqlDateTime($unix_time) {
-		return date('Y-m-d G:i:s', $unix_time);
+		$t = date('Y-m-d G:i:s', $unix_time);
+        return $t;
 	}
 
 	/**
@@ -129,7 +144,7 @@ class sqlLogDriver extends AbstractLogDriver {
 	 *
 	 * @return String Formatted XML node for insertion into the log reader
 	 */	
-	function formatXmlLogItem($node, $icon, $dateattrib, $filename, $remote_ip, $log_level, $user, $action, $params, $is_file = 1, $rootPath = "/logs") {
+	function formatXmlLogItem($node, $icon, $dateattrib, $filename, $remote_ip, $log_level, $user, $action, $params, $rootPath = "/logs") {
 		$remote_ip = $this->inet_dtop($remote_ip);
 		$log_unixtime = strtotime($dateattrib);
 		$log_datetime = date("m-d-y", $log_unixtime) . " " . date("G:i:s", $log_unixtime);
@@ -138,10 +153,10 @@ class sqlLogDriver extends AbstractLogDriver {
 		$log_date = date("m-d-y", $log_unixtime);
 		
 		// Some actions or parameters can contain characters that need to be encoded, especially when a piece of code raises a notification or error.
-		$action = htmlentities($action);
-		$params = htmlentities($params);
+		$action = AJXP_Utils::xmlEntities($action);
+		$params = AJXP_Utils::xmlEntities($params);
 
-		return "<$node icon=\"{$icon}\" date=\"{$log_datetime}\" ajxp_modiftime=\"{$log_unixtime}\" is_file=\"{$is_file}\" filename=\"{$rootPath}/{$log_year}/{$log_month}/{$log_date}/{$log_datetime}\" ajxp_mime=\"log\" ip=\"{$remote_ip}\" level=\"{$log_level}\" user=\"{$user}\" action=\"{$action}\" params=\"{$params}\"/>";
+		return "<$node icon=\"{$icon}\" date=\"{$log_datetime}\" ajxp_modiftime=\"{$log_unixtime}\" is_file=\"true\" filename=\"{$rootPath}/{$log_year}/{$log_month}/{$log_date}/{$log_datetime}\" ajxp_mime=\"log\" ip=\"{$remote_ip}\" level=\"{$log_level}\" user=\"{$user}\" action=\"{$action}\" params=\"{$params}\"/>";
 	}
 	
 	/**
@@ -170,10 +185,18 @@ class sqlLogDriver extends AbstractLogDriver {
 	 * @param String [optional] $year
 	 * @param String [optional] $month
 	 */
-	function xmlListLogFiles($nodeName="file", $year=null, $month=null, $rootPath = "/logs") {
+	function xmlListLogFiles($nodeName="file", $year=null, $month=null, $rootPath = "/logs", $print = true) {
 
 		$xml_strings = array();
-		
+
+        if($this->sqlDriver["driver"] == "sqlite3"){
+            $yFunc = "strftime('%Y', [logdate])";
+            $mFunc = "strftime('%m', [logdate])";
+        }else{
+            $yFunc = "YEAR([logdate])";
+            $mFunc = "MONTH([logdate])";
+        }
+
 		try {
 			if ($month != null) { // Get days
 				
@@ -194,8 +217,10 @@ class sqlLogDriver extends AbstractLogDriver {
 					$fullMonth = date('F', $log_time);
 					$logM = date('m', $log_time);
 					$date = $r['logdate'];
-				
-					$xml_strings[$r['logdate']] = $this->formatXmlLogList($nodeName, 'toggle_log.png', $display, $display, $date, "$rootPath/$fullYear/$logM/$date");
+				    if(is_a($date, "DibiDateTime")){
+                        $date = $date->format("Y-m-d");
+                    }
+					$xml_strings[$date] = $this->formatXmlLogList($nodeName, 'toggle_log.png', $date, $date, $date, "$rootPath/$fullYear/$logM/$date");
 					//"<$nodeName icon=\"toggle_log.png\" date=\"$display\" display=\"$display\" text=\"$date\" is_file=\"0\" filename=\"/logs/$fullYear/$fullMonth/$date\"/>";
 				}
 			
@@ -204,8 +229,8 @@ class sqlLogDriver extends AbstractLogDriver {
 				$year_end_time = mktime(0,0,0,1,1,$year+1);
 			
 				$q = 'SELECT 
-					DISTINCT YEAR([logdate]) AS year,
-					MONTH([logdate]) AS month 
+					DISTINCT '.$yFunc.' AS year,
+					'.$mFunc.' AS month
 					FROM [ajxp_log] 
 					WHERE [logdate] >= %s AND [logdate] < %s';
 				$result = dibi::query($q, $this->toMysqlDateTime($year_start_time), $this->toMysqlDateTime($year_end_time));
@@ -217,15 +242,16 @@ class sqlLogDriver extends AbstractLogDriver {
 				
 					$fullYear = date('Y', $month_time);
 					$fullMonth = date('F', $month_time);
+					$logMDisplay = date('M', $month_time);
 					$logM = date('m', $month_time);
-				
-					$xml_strings[$r['month']] = $this->formatXmlLogList($nodeName, 'x-office-calendar.png', $logM, $logM, $logM, "$rootPath/$fullYear/$logM");
+
+					$xml_strings[$r['month']] = $this->formatXmlLogList($nodeName, 'x-office-calendar.png', $logM, $logMDisplay, $logMDisplay, "$rootPath/$fullYear/$logM");
 					//"<$nodeName icon=\"x-office-calendar.png\" date=\"$fullMonth\" display=\"$logM\" text=\"$fullMonth\" is_file=\"0\" filename=\"/logs/$fullYear/$fullMonth\"/>";
 				}
 						
 			} else { // Get years
 				$q = 'SELECT 
-					DISTINCT YEAR([logdate]) AS year 
+					DISTINCT '.$yFunc.' AS year
 					FROM [ajxp_log]';
 				$result = dibi::query($q);
 			
@@ -241,12 +267,14 @@ class sqlLogDriver extends AbstractLogDriver {
 			echo get_class($e), ': ', $e->getMessage(), "\n";
 			exit(1);			
 		}
-		
-		foreach ($xml_strings as $s) {
-			print($s);
-		}
-		
-		return ;
+
+        if($print){
+            foreach ($xml_strings as $s) {
+                print($s);
+            }
+        }
+
+		return $xml_strings ;
 	}
 	
 	/**
@@ -260,17 +288,29 @@ class sqlLogDriver extends AbstractLogDriver {
 		$end_time = mktime(0,0,0,date('m', $start_time), date('d', $start_time) + 1, date('Y', $start_time));
 		
 		try {
-			$q = 'SELECT 
-				*
-				FROM [ajxp_log]
-				WHERE [logdate] >= %d AND [logdate] < %d';
-			//dibi::test($q, $this->toMysqlDateTime($start_time), $this->toMysqlDateTime($end_time));
-			$result = dibi::query($q, $this->toMysqlDateTime($start_time), $this->toMysqlDateTime($end_time));
-		
+            if($this->sqlDriver["driver"] == "sqlite3"){
+                $dateEnd = date('Y-m-d', $end_time);
+                $q = 'SELECT * FROM [ajxp_log] WHERE strftime("%s", logdate) BETWEEN  strftime("%s", "'.$date.'") AND  strftime("%s", "'.$dateEnd.'") ORDER BY logdate';
+                $result = dibi::query($q);
+            }else{
+                $q = 'SELECT * FROM [ajxp_log] WHERE [logdate] BETWEEN %d AND %d';
+                $result = dibi::query($q, $this->toMysqlDateTime($start_time), $this->toMysqlDateTime($end_time));
+            }
+            //$all = $result->fetchAll();
 			$log_items = "";
-		
+
 			foreach ($result as $r) {
-				$log_items .= SystemTextEncoding::toUTF8($this->formatXmlLogItem($nodeName, 'toggle_log.png', $r['logdate'], $date, $r['remote_ip'], $r['severity'], $r['user'], $r['message'], $r['params'], $rootPath));
+				$log_items .= SystemTextEncoding::toUTF8($this->formatXmlLogItem(
+                    $nodeName,
+                    'toggle_log.png',
+                    $r['logdate'],
+                    $date,
+                    $r['remote_ip'],
+                    $r['severity'],
+                    $r['user'],
+                    $r['message'],
+                    $r['params'],
+                    $rootPath));
 			}
 		
 			print($log_items);

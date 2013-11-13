@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 Class.create("PluginEditor", AbstractEditor, {
 
@@ -140,6 +140,7 @@ Class.create("PluginEditor", AbstractEditor, {
                 driverParamsHash.push(hashedParams);
             }
             var form = new Element('div', {className:'driver_form'});
+
             if(documentation){
                 var docDiv = new Element('div', {style:'height:100%;'}).insert("<div class='documentation'>" + documentation.firstChild.nodeValue + "</div>");
                 docDiv.select('img').each(function(img){
@@ -159,6 +160,7 @@ Class.create("PluginEditor", AbstractEditor, {
             }
 
             this.infoPane.insert({bottom:form});
+            form.ajxpPaneObject = this;
 
             if(driverParamsHash.size()){
                 this.formManager.createParametersInputs(form, driverParamsHash, true, (paramsValues.size()?paramsValues:null));
@@ -173,10 +175,8 @@ Class.create("PluginEditor", AbstractEditor, {
                 toggles.invoke("removeClassName", "accordion_toggle_active");
                 toggles.invoke("addClassName", "innerTitle");
             }
-            form.select("div.SF_element").each(function(element){
-                element.select("input,textarea,select").invoke("observe", "change", this.setDirty.bind(this));
-                element.select("input,textarea").invoke("observe", "keydown", this.setDirty.bind(this));
-            }.bind(this) );
+            this.formManager.observeFormChanges(form, this.setDirty.bind(this));
+
 
             ajaxplorer.blurAll();
         }.bind(this);

@@ -1,22 +1,22 @@
 <?php
 /*
-* Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
-* This file is part of AjaXplorer.
+* Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+* This file is part of Pydio.
 *
-* AjaXplorer is free software: you can redistribute it and/or modify
+* Pydio is free software: you can redistribute it and/or modify
 * it under the terms of the GNU Affero General Public License as published by
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 *
-* AjaXplorer is distributed in the hope that it will be useful,
+* Pydio is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Affero General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+* along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
 *
-* The latest code can be found at <http://www.ajaxplorer.info/>.
+* The latest code can be found at <http://pyd.io/>.
 */
 //	german translation: Axel Otterstätter <axel.otterstaetter@googlemail.com>
 
@@ -133,13 +133,15 @@ $mess=array(
 "109" => "Globale Konfigurationen",
 "110" => "Repositories & Benutzer",
 "111" => "Logs & Andere Daten",
-"112" => "<b>Diese Rolle als default festlegen</b> für alle neuen Benutzer.",
+"112" => "<b>Diese Rolle als Standard festlegen</b> für alle neuen Benutzer.",
 "113" => "Der Status der Rolle wurde erfogreich geändert",
-"114" => "Default",
+"114" => "Standard",
 "115" => "Schema",
-    "116" => "Template Label",
-    "117" => "Template Driver",
-    "118" => "Neue Gruppe",
-    "group_access" => "G",
-
+"116" => "Template Label",
+"117" => "Template Driver",
+"118" => "Neue Gruppe",
+"group_access" => "G",
+"119" => "Set user group",
+"120" => "Go Pro",
+"121" => "Get professional support for your install",
 );

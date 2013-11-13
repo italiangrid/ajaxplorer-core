@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 Class.create("RoleEditor", AbstractEditor, {
 
@@ -262,6 +262,7 @@ Class.create("RoleEditor", AbstractEditor, {
 
     buildInfoPane : function(node, scope){
         var f = this.getFormManager();
+        this.element.ajxpPaneObject = this;
         if(scope == "user"){
             // MAIN INFO
             var rolesChoicesString = this.roleData.ALL.ROLES.join(",");
@@ -405,6 +406,8 @@ Class.create("RoleEditor", AbstractEditor, {
             ];
             defs = $A(defs);
             f.createParametersInputs(this.element.down("#pane-infos").down("#account_infos"), defs, true, false, false, true);
+            // UPDATE MAIN HEADER
+            this.element.down("span.header_label").update(this.roleData.GROUP.LABEL);
 
             // REMOVE BUTTONS
             this.element.down("#pane-infos").down("#account_actions").remove();
@@ -443,11 +446,7 @@ Class.create("RoleEditor", AbstractEditor, {
         }
 
 
-        // UPDATE FORMS ELEMENTS
-        this.element.down("#pane-infos").select("div.SF_element").each(function(element){
-            element.select("input,textarea,select").invoke("observe", "change", this.setDirty.bind(this));
-            element.select("input,textarea").invoke("observe", "keydown", this.setDirty.bind(this));
-        }.bind(this) );
+        f.observeFormChanges(this.element,  this.setDirty.bind(this));
     },
 
     initJSONResponse : function(responseJSON){
@@ -567,6 +566,7 @@ Class.create("RoleEditor", AbstractEditor, {
    		var rightsTable = rightsPane.down('#acls-selected');
         rightsTable.update("");
         var repositories = this.roleData.ALL.REPOSITORIES;
+        if(!Object.keys(repositories).length) return;
         //repositories.sortBy(function(element) {return XPathGetSingleNodeText(element, "label");});
         //var defaultRepository = XPathGetSingleNodeText(xmlData, '//pref[@name="force_default_repository"]/@value');
    		for(var repoId in repositories){

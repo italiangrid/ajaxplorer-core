@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -60,7 +60,7 @@ class multiAuthDriver extends AbstractAuthDriver {
 				throw new Exception("Cannot find plugin $name for type 'auth'");
 			}
 			$instance->init($options);
-            if($this->masterSlaveMode && $name != $this->getOption("MASTER_DRIVER")){
+            if($name != $this->getOption("MASTER_DRIVER")){
                 $this->slaveName = $name;
             }
 			$this->drivers[$name] = $instance;
@@ -71,7 +71,7 @@ class multiAuthDriver extends AbstractAuthDriver {
 	}
 	
 	public function getRegistryContributions( $extendedVersion = true ){
-		AJXP_Logger::debug("get contributions NOW");
+		// AJXP_Logger::debug("get contributions NOW");
 		$this->loadRegistryContributions();
 		return parent::getRegistryContributions( $extendedVersion );
 	}
@@ -175,19 +175,38 @@ class multiAuthDriver extends AbstractAuthDriver {
     }
 
     function supportsUsersPagination(){
-        return (!empty($this->baseName) && $this->drivers[$this->baseName]->supportsUsersPagination());
+        if(!empty($this->baseName)){
+            return $this->drivers[$this->baseName]->supportsUsersPagination();
+        }else{
+            return $this->drivers[$this->masterName]->supportsUsersPagination() && $this->drivers[$this->slaveName]->supportsUsersPagination();
+        }
     }
 
     function listUsersPaginated($baseGroup="/", $regexp, $offset, $limit){
-        return $this->drivers[$this->baseName]->listUsersPaginated($baseGroup, $regexp, $offset, $limit);
+        if(!empty($this->baseName)){
+            return $this->drivers[$this->baseName]->listUsersPaginated($baseGroup, $regexp, $offset, $limit);
+        }else{
+            $keys = array_keys($this->drivers);
+            return $this->drivers[$keys[0]]->listUsersPaginated($baseGroup, $regexp, $offset, $limit) +  $this->drivers[$keys[1]]->listUsersPaginated($baseGroup, $regexp, $offset, $limit);
+        }
     }
 
-    function getUsersCount(){
+    function getUsersCount($baseGroup = "/", $regexp = ""){
         if(empty($this->baseName)){
-            return $this->drivers[$this->slaveName]->getUsersCount() +  $this->drivers[$this->masterName]->getUsersCount();
+            if($this->masterSlaveMode){
+                return $this->drivers[$this->slaveName]->getUsersCount($baseGroup, $regexp) +  $this->drivers[$this->masterName]->getUsersCount($baseGroup, $regexp);
+            }else{
+                $keys = array_keys($this->drivers);
+                return $this->drivers[$keys[0]]->getUsersCount($baseGroup, $regexp) +  $this->drivers[$keys[1]]->getUsersCount($baseGroup, $regexp);
+            }
         }else{
-            return $this->drivers[$this->baseName]->getUsersCount();
+            return $this->drivers[$this->baseName]->getUsersCount($baseGroup, $regexp);
         }
+    }
+
+    function isAjxpAdmin($login){
+        $keys = array_keys($this->drivers);
+        return ($this->drivers[$keys[0]]->getOption("AJXP_ADMIN_LOGIN") === $login) ||  ($this->drivers[$keys[1]]->getOption("AJXP_ADMIN_LOGIN") === $login);
     }
 
 	function listUsers($baseGroup="/"){
@@ -204,20 +223,30 @@ class multiAuthDriver extends AbstractAuthDriver {
             return array_merge($masterUsers, $slaveUsers);
         }
 		if($this->getCurrentDriver()){
-			return $this->getCurrentDriver()->listUsers($baseGroup);
+//			return $this->getCurrentDriver()->listUsers($baseGroup);
 		}
 		$allUsers = array();
 		foreach($this->drivers as $driver){
-			$allUsers = array_merge($driver->listUsers($baseGroup));
+			$allUsers = array_merge($allUsers, $driver->listUsers($baseGroup));
 		}
 		return $allUsers;
 	}
 
     function updateUserObject(&$userObject){
         $s = $this->getAuthScheme($userObject->getId());
-        if(isSet($this->drivers[$s])){
-            $this->drivers[$s]->updateUserObject($userObject);
+        if(!$this->masterSlaveMode){
+            $test = $this->extractRealId($userObject->getId());
+            if($test != $userObject->getId()) {
+                $restore = $userObject->getId();
+                $userObject->setId($test);
+            }
         }
+        if(!empty($s) && isSet($this->drivers[$s])){
+            $this->drivers[$s]->updateUserObject($userObject);
+        }else if(!empty($this->currentDriver) && isSet($this->drivers[$this->currentDriver])){
+            $this->drivers[$this->currentDriver]->updateUserObject($userObject);
+        }
+        if(isSet($restore)) $userObject->setId($restore);
     }
 
     /**
@@ -234,13 +263,13 @@ class multiAuthDriver extends AbstractAuthDriver {
             return $aGroups + $bGroups;
         }
         if($this->getCurrentDriver()){
-            return $this->drivers[$this->currentDriver]->listChildrenGroups($baseGroup);
-        }else{
-            $groups = array();
-            foreach($this->drivers as $d){
-                $groups = array_merge($groups, $d->listChildrenGroups($baseGroup));
-            }
+//            return $this->drivers[$this->currentDriver]->listChildrenGroups($baseGroup);
         }
+        $groups = array();
+        foreach($this->drivers as $d){
+            $groups = array_merge($groups, $d->listChildrenGroups($baseGroup));
+        }
+        return $groups;
     }
 
 

@@ -1,25 +1,25 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
- * AjaXplorer encapsulation of Ajax.Request
+ * Pydio encapsulation of Ajax.Request
  */
 Class.create("Connexion", {
 
@@ -104,13 +104,14 @@ Class.create("Connexion", {
 	sendAsync : function(){	
 		this.addSecureToken();
         this.showLoader();
-		new Ajax.Request(this._baseUrl, 
+		var t = new Ajax.Request(this._baseUrl,
 		{
 			method:this._method,
 			onComplete:this.applyComplete.bind(this),
 			parameters:this._parameters.toObject()
 		});
-	},
+        try {if(Prototype.Browser.IE10) t.transport.responseType =  'msxml-document'; } catch(e){}
+    },
 	
 	/**
 	 * Send synchronously
@@ -118,14 +119,15 @@ Class.create("Connexion", {
 	sendSync : function(){	
 		this.addSecureToken();
         this.showLoader();
-		new Ajax.Request(this._baseUrl, 
+		var t = new Ajax.Request(this._baseUrl,
 		{
 			method:this._method,
 			asynchronous: false,
 			onComplete:this.applyComplete.bind(this),
-			parameters:this._parameters.toObject()
+			parameters:this._parameters.toObject(),
+            msxmldoctype: true
 		});
-	},
+    },
 	
 	/**
 	 * Apply the complete callback, try to grab maximum of errors
@@ -146,7 +148,7 @@ Class.create("Connexion", {
 		var headers = transport.getAllResponseHeaders();
 		if(Prototype.Browser.Gecko && transport.responseXML && transport.responseXML.documentElement && transport.responseXML.documentElement.nodeName=="parsererror"){
 			message = "Parsing error : \n" + transport.responseXML.documentElement.firstChild.textContent;					
-		}else if(Prototype.Browser.IE && transport.responseXML.parseError && transport.responseXML.parseError.errorCode != 0){
+		}else if(Prototype.Browser.IE && transport.responseXML && transport.responseXML.parseError && transport.responseXML.parseError.errorCode != 0){
 			message = "Parsing Error : \n" + transport.responseXML.parseError.reason;
 		}else if(headers.indexOf("text/xml")>-1 && transport.responseXML == null){
 			message = "Unknown Parsing Error!";

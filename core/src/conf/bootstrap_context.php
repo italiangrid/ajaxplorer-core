@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  *
  * This is the main configuration file for configuring the core of the application.
  * In a standard usage, you should not have to change any variables.
@@ -68,9 +68,27 @@ define("ADMIN_PASSWORD", "admin");
 
 
 // DEBUG OPTIONS
-define("AJXP_CLIENT_DEBUG"  ,	false);
-define("AJXP_SERVER_DEBUG"  ,	false);
+define("AJXP_CLIENT_DEBUG"  ,	true);
+define("AJXP_SERVER_DEBUG"  ,	true);
 define("AJXP_SKIP_CACHE"    ,   false);
+
+
+// PBKDF2 CONSTANTS FOR A SECURE STORAGE OF PASSWORDS
+// These constants may be changed without breaking existing hashes.
+define("PBKDF2_HASH_ALGORITHM", "sha256");
+define("PBKDF2_ITERATIONS", 1000);
+define("PBKDF2_SALT_BYTE_SIZE", 24);
+define("PBKDF2_HASH_BYTE_SIZE", 24);
+
+define("HASH_SECTIONS", 4);
+define("HASH_ALGORITHM_INDEX", 0);
+define("HASH_ITERATION_INDEX", 1);
+define("HASH_SALT_INDEX", 2);
+define("HASH_PBKDF2_INDEX", 3);
+
+// CAN BE SWITCHED TO TRUE TO MAKE THE SECURE TOKEN MORE SAFE
+// MAKE SURE YOU HAVE PHP.5.3, OPENSSL, AND THAT IT DOES NOT DEGRADE PERFORMANCES
+define("USE_OPENSSL_RANDOM", false);
 
 require(AJXP_BIN_FOLDER."/compat.php");
 

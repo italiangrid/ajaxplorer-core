@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -80,9 +80,10 @@ Class.create("ActionsManager", {
 	/**
 	 * Filter the actions given the srcElement passed as arguments. 
 	 * @param srcElement String An identifier among selectionContext, genericContext, a webfx object id
+     * @param ignoreGroups Array a list of groups to ignore
 	 * @returns Array
 	 */
-	getContextActions: function(srcElement)
+	getContextActions: function(srcElement, ignoreGroups)
 	{		
 		var actionsSelectorAtt = 'selectionContext';
 		if(srcElement.id && (srcElement.hasClassName('table_rows_container') ||  srcElement.hasClassName('selectable_div')))
@@ -159,6 +160,9 @@ Class.create("ActionsManager", {
 		contextActionsGroup.each(function(pair){
             if(!first){
                 contextActions.push({separator:true});
+            }
+            if(ignoreGroups && ignoreGroups.indexOf(pair.key) != -1){
+                return;
             }
             first = false;
             pair.value.each(function(mItem){
@@ -454,7 +458,9 @@ Class.create("ActionsManager", {
                         if(!parent && getRepName(newNode.getPath()) == "") parent = dm.getRootNode();
                         if(parent){
                             parent.addChild(newNode);
-                            dm.setSelectedNodes([newNode], {});
+                            if(dm.getContextNode() == parent){
+                                dm.setSelectedNodes([newNode], {});
+                            }
                         }
                     });
                 }

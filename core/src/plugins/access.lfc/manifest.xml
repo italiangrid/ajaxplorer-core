@@ -30,5 +30,4 @@
         </hooks>
 	</registry_contributions>
 	<class_definition filename="plugins/access.lfc/class.lfcAccessDriver.php" classname="lfcAccessDriver"/>	
-	<class_stream_wrapper filename="plugins/access.fs/class.fsAccessWrapper.php" classname="fsAccessWrapper" protocol="ajxp.fs"/>
 </ajxpdriver>

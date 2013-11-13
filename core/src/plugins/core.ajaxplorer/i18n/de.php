@@ -1,22 +1,22 @@
 <?php
 /*
-* Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
-* This file is part of AjaXplorer.
+* Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+* This file is part of Pydio.
 *
-* AjaXplorer is free software: you can redistribute it and/or modify
+* Pydio is free software: you can redistribute it and/or modify
 * it under the terms of the GNU Affero General Public License as published by
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 *
-* AjaXplorer is distributed in the hope that it will be useful,
+* Pydio is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Affero General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+* along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
 *
-* The latest code can be found at <http://www.ajaxplorer.info/>.
+* The latest code can be found at <http://pyd.io/>.
 */
 //	german translation: Philip Schädler <philip.schaedler@gmail.com>
 //  	+ last update: Axel Otterstätter <axel.otterstaetter@googlemail.com>
@@ -192,9 +192,9 @@ $mess=array(
 "164"=> "Abmelden",
 "165"=> "Einstellungen",
 "166"=> "Info",
-"167"=> "Über AjaXplorer",
+"167"=> "Über Pydio",
 "168" => "Anmelden",
-"169" => "AjaXplorer verlassen",
+"169" => "Pydio verlassen",
 "170" => "Aktueller Ordner",
 "parent_access_key" => "A",
 "refresh_access_key" => "k",
@@ -417,8 +417,8 @@ $mess=array(
 "366" => "Dieser Benutzer hat kein aktives Repository.",
 "367" => "Dieser Dateityp ist beim Hochladen nicht erlaubt. Bitte nur folgende Typen verwenden: ",
 "368" => "Die Auswahl wurde erfolgreich aus dem Archive %s in das Verzeichnis %s extrahiert.",
-"369" => "AjaXplorer Link",
-"370" => "AjaXplorer Öffentlicher Download",
+"369" => "Pydio Link",
+"370" => "Pydio Öffentlicher Download",
 "371" => "Für diesen Download wird ein Passwort benötigt",
 "372" => "Aktuelles Repository",
 "373" => "Ziel",
@@ -437,7 +437,7 @@ $mess=array(
 "389" => "Bitte den untenstehenden Code lesen:",
 "390" => "Code",
 "391" => "Kein Repository",
-"392" => "Achtung, die Version des AjaXplorer hat sich geändert (jetzt %s). Bitte den Browser-Cache leeren und die Seite neu laden!",
+"392" => "Achtung, die Version des Pydio hat sich geändert (jetzt %s). Bitte den Browser-Cache leeren und die Seite neu laden!",
 "393" => "Achtung, der Name muss kürzer als %s sein, dieser Dateiname wird abgeschnitten!",
 "394" => "Entschuldigung, aber zur Zeit ist das Teilen der Verzeichnisse (sharing) aufgrund des aktuellen Authentifizierungstreiber nicht möglich (Benutzer können nicht verändert werden). Aber das Datei-Sharing funktioniert.",
 "395" => "Das fallengelassene Element scheint ein Ordner zu sein, aber Verzeichnisse können nicht zum Server hochgeladen werden! Soll der Upload trotzdem gestartet werden?",
@@ -449,7 +449,7 @@ $mess=array(
 "401" => "Die folgenden Software herunterladen und installieren, um die einzelnen Segmente zusammen zufügen: ",
 "402" => "http://www.hjsplit.org/",
 "403" => "WebDAV Voreinstellungen",
-"404" => "Das WebDAV-Protokoll kann verwendet werden, um die AjaXplorer Repositories als 'Netzwerklaufwerk' unter Windows, Mac, iPhone usw. zu nutzen.",
+"404" => "Das WebDAV-Protokoll kann verwendet werden, um die Pydio Repositories als 'Netzwerklaufwerk' unter Windows, Mac, iPhone usw. zu nutzen.",
 "405" => "Nutzen Sie die folgenden URLs um auf die Repositories mit ihrem eingegebenen Benutzernamen und Passwort zu zugreifen. Achtung, die Freigabe arbeitet nur, wenn diese auf 'Aktiv' gesetzt ist und das Passwort eingegeben wurde.",
 "406" => "Aktiviere die WebDAV-Freigaben",
 "407" => "Bitte das Passwort eingeben, wenn die WebDAV-Freigaben zum ersten Mal aktiviert werden oder ein neues Passwort verwendet werden soll:",
@@ -476,7 +476,7 @@ $mess=array(
 "427" => "Es ist ein Fehler beim Löschen des Repositories aufgetreten.",
 "428" => "Das Repository wurde gelöscht.",
 "429" => "Dies gibt an, wie das Repository in der Liste dargestellt wird.",
-"430" => "Default Dateien",
+"430" => "Standard Dateien",
 "431" => "Beispiel Template",
 "432" => "Meine Dateien",
 "433" => "bereit",
@@ -493,38 +493,49 @@ $mess=array(
 "444" => "Bitte das Passwort neu setzen, ansonsten ist ein erneutes Anmelden nicht möglich.",
 "445" => "Sie wurden ausgeloggt, bitte mit dem neuen Passwort erneut anmelden, danke!",
 "446" => "Presentation",
-"447" => "My group",
-"448" => "create user",
-"449" => "Creating %s, choose a password",
-"450" => "Sort by ...",
-"451" => "Sort thumbnails by ...",
-"452" => "Thumbs size",
-"453" => "Set thumbnails size",
-"454" => "Select files on your computer",
-"455" => "My Workspaces",
-"456" => "More",
+"447" => "Meine Gruppe",
+"448" => "benutzer erstellen",
+"449" => "erstelle %s, wähle ein passwort",
+"450" => "Sortieren nach ...",
+"451" => "Sortiere thumbnails nach ...",
+"452" => "Thumbs größe",
+"453" => "Setze thumbnails größe",
+"454" => "Wählen Sie die Dateien auf Ihren PC",
+"455" => "Meine Repositories",
+"456" => "Mehr",
 "457" => "update",
-"458" => "remove",
-"459" => "Top folder",
+"458" => "löschen",
+"459" => "Hauptordner",
 "460" => "Details",
-"461" => "Switch to details view",
+"461" => "Zur Detailansicht wechseln",
 "detail_access_key" => "D",
-"date_relative_date" => "on DATE",
+"date_relative_date" => "am DATE",
 "date_relative_time" => "TIME",
 "date_relative_date_format" => "Y/m/d",
 "date_relative_time_format" => "H:i",
-"date_relative_today" => "today at TIME",
-"date_relative_yesterday" => "yesterday at TIME",
+"date_relative_today" => "Heute um TIME",
+"date_relative_yesterday" => "Gestern um TIME",
 "date_relative_tomorrow" => "tomorrow at TIME",
-"date_relative_days_ago" => "%s days ago",
-"date_relative_days_ahead" => "in %s days",
-"462" => "Preview",
+"date_relative_days_ago" => "%s Tagen",
+"date_relative_days_ahead" => "in %s Tagen",
+"462" => "Vorschau",
 "preview_access_key" => "e",
-"463" => "Download all",
-"464" => "Download all workspace content at once (zipped)",
-"465" => "Show alternative URLs (mount workspaces separately)",
-"466" => "Loading...",
-"467" => "All Shared Elements",
+"463" => "Alle herunterladen",
+"464" => "Alle Repositories Inhalte auf einmal herunterladen (gezippt)",
+"465" => "Zeigen alternative URLs (momentane Repositories)",
+"466" => "Lade...",
+"467" => "Alle geteilten Inhalte",
+"468" => "Meine Repositories",
+"469" => "Mit mir Geteilt",
+"470" => "Erstellt %date",
+"471" => "Erstellt von %user %date",
+"472" => "Geteilt von %user",
+"473" => "Geteilt von %user %date",
+"474" => "Keine Beschreibung verfügbar",
+"475" => "Für alle Benutzer freigegeben",
+"476" => "Ihr persöhnliches Repositorie",
+"477" => "Select a file or folder to see its details here",
+"478" => "No results found",
 /* END SENTENCE */
 );
 ?>

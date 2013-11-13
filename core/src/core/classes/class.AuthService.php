@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -65,7 +65,8 @@ class AuthService
      * @return
      */
 	static function generateSecureToken(){
-		$_SESSION["SECURE_TOKEN"] = md5(time());
+
+		$_SESSION["SECURE_TOKEN"] = AJXP_Utils::generateRandomString(32); //md5(time());
 		return $_SESSION["SECURE_TOKEN"];
 	}
 	/**
@@ -95,7 +96,13 @@ class AuthService
 	 */
 	static function getLoggedUser()
 	{
-		if(self::$useSession && isSet($_SESSION["AJXP_USER"])) return $_SESSION["AJXP_USER"];
+		if(self::$useSession && isSet($_SESSION["AJXP_USER"])) {
+            if(is_a($_SESSION["AJXP_USER"], "__PHP_Incomplete_Class")){
+                session_unset("AJXP_USER");
+                return null;
+            }
+            return $_SESSION["AJXP_USER"];
+        }
 		if(!self::$useSession && isSet(self::$currentUser)) return self::$currentUser;
 		return null;
 	}
@@ -206,7 +213,7 @@ class AuthService
             $user->invalidateCookieString(substr($current, strpos($current, ":")+1));
         }
         $rememberPass = $user->getCookieString();
-        setcookie("AjaXplorer-remember", $user->id.":".$rememberPass, time()+3600*24*10);
+        setcookie("AjaXplorer-remember", $user->id.":".$rememberPass, time()+3600*24*10, null, null, (isSet($_SERVER["HTTPS"]) && strtolower($_SERVER["HTTPS"]) == "on"), true);
     }
 
     /**
@@ -227,7 +234,7 @@ class AuthService
         if(!empty($current) && $user != null){
             $user->invalidateCookieString(substr($current, strpos($current, ":")+1));
         }
-        setcookie("AjaXplorer-remember", "", time()-3600);
+        setcookie("AjaXplorer-remember", "", time()-3600, null, null, (isSet($_SERVER["HTTPS"]) && strtolower($_SERVER["HTTPS"]) == "on"), true);
     }
 
     static function logTemporaryUser($parentUserId, $temporaryUserId){
@@ -392,13 +399,14 @@ class AuthService
      */
 	public static function bootSequence(&$START_PARAMETERS){
 
-        if(@file_exists(AJXP_CACHE_DIR."/admin_counted")) return;
+        if(AJXP_Utils::detectApplicationFirstRun()) return;
+        if(file_exists(AJXP_CACHE_DIR."/admin_counted")) return;
         $rootRole = AuthService::getRole("ROOT_ROLE", false);
         if($rootRole === false){
             $rootRole = new AJXP_Role("ROOT_ROLE");
             $rootRole->setLabel("Root Role");
             $rootRole->setAutoApplies(array("standard"));
-            foreach (ConfService::getRepositoriesList() as $repositoryId => $repoObject)
+            foreach (ConfService::getRepositoriesList("all") as $repositoryId => $repoObject)
             {
                 if($repoObject->isTemplate) continue;
                 $gp = $repoObject->getGroupPath();
@@ -427,7 +435,7 @@ class AuthService
             );
             foreach($actions as $pluginId => $acts){
                 foreach($acts as $act){
-                    $rootRole->setActionState($pluginId, $act, AJXP_REPO_SCOPE_SHARED);
+                    $rootRole->setActionState($pluginId, $act, AJXP_REPO_SCOPE_SHARED, false);
                 }
             }
             AuthService::updateRole($rootRole);
@@ -441,7 +449,24 @@ class AuthService
             );
             foreach($actions as $pluginId => $acts){
                 foreach($acts as $act){
-                    $rootRole->setActionState($pluginId, $act, AJXP_REPO_SCOPE_SHARED);
+                    $rootRole->setActionState($pluginId, $act, AJXP_REPO_SCOPE_SHARED, false);
+                }
+            }
+            AuthService::updateRole($rootRole);
+        }
+        $miniRole = AuthService::getRole("GUEST", false);
+        if($miniRole === false){
+            $rootRole = new AJXP_Role("GUEST");
+            $rootRole->setLabel("Guest user role");
+            $actions = array(
+                "access.fs" => array("purge"),
+                "meta.watch" => array("toggle_watch"),
+                "index.lucene" => array("index"),
+            );
+            $rootRole->setAutoApplies(array("guest"));
+            foreach($actions as $pluginId => $acts){
+                foreach($acts as $act){
+                    $rootRole->setActionState($pluginId, $act, AJXP_REPO_SCOPE_ALL);
                 }
             }
             AuthService::updateRole($rootRole);
@@ -474,7 +499,8 @@ class AuthService
 			$adminUser->save("superuser");
 			$START_PARAMETERS["ALERT"] .= "There is an admin user, but without admin right. Now any user can have the administration rights, \\n your 'admin' user was set with the admin rights. Please check that this suits your security configuration.";
     	}
-        @file_put_contents(AJXP_CACHE_DIR."/admin_counted", "true");
+        file_put_contents(AJXP_CACHE_DIR."/admin_counted", "true");
+
 	}
     /**
      * If the auth driver implementatino has a logout redirect URL, clear session and return it.
@@ -671,6 +697,7 @@ class AuthService
             $ha1 = md5("{$userId}:{$realm}:{$userPass}");
             $zObj = ConfService::getConfStorageImpl()->createUserObject($userId);
             $wData = $zObj->getPref("AJXP_WEBDAV_DATA");
+            if(!is_array($wData)) $wData = array();
             $wData["HA1"] = $ha1;
             $zObj->setPref("AJXP_WEBDAV_DATA", $wData);
             $zObj->save();
@@ -717,6 +744,7 @@ class AuthService
                 $user = $confDriver->createUserObject($userId);
             }
             $wData = $user->getPref("AJXP_WEBDAV_DATA");
+            if(!is_array($wData)) $wData = array();
             $wData["HA1"] = $ha1;
             $user->setPref("AJXP_WEBDAV_DATA", $wData);
             $user->save();
@@ -781,7 +809,10 @@ class AuthService
 
     }
 
-    static function createGroup($baseGroup, $groupName, $groupLabel){
+    public static function createGroup($baseGroup, $groupName, $groupLabel)
+    {
+        if(empty($groupName)) throw new Exception("Please provide a name for this new group!");
+        if(empty($groupLabel)) $groupLabel = $groupName;
         ConfService::getConfStorageImpl()->createGroup(rtrim(self::filterBaseGroup($baseGroup), "/")."/".$groupName, $groupLabel);
     }
 
@@ -847,9 +878,9 @@ class AuthService
         return $authDriver->supportsUsersPagination();
     }
 
-    static function authCountUsers(){
+    static function authCountUsers($baseGroup="/", $regexp=""){
         $authDriver = ConfService::getAuthDriverImpl();
-        return $authDriver->getUsersCount();
+        return $authDriver->getUsersCount($baseGroup, $regexp);
     }
 
     static function getAuthScheme($userName){
@@ -870,7 +901,7 @@ class AuthService
 	 * @return AJXP_Role
 	 */
 	static function getRole($roleId, $createIfNotExists = false){
-		$roles = self::getRolesList();
+		$roles = self::getRolesList(array($roleId));
 		if(isSet($roles[$roleId])) return $roles[$roleId];
         if($createIfNotExists){
             $role = new AJXP_Role($roleId);
@@ -920,6 +951,54 @@ class AuthService
     }
 
 	/**
+     * @param AJXP_Role $parentRole
+     * @return AJXP_Role
+     */
+    public static function limitedRoleFromParent($parentUser)
+    {
+        $parentRole = self::getRole("AJXP_USR_/".$parentUser);
+        if($parentRole === false) return null;
+
+        // Inherit actions
+        $inheritActions = array();
+        $cacheInherit = AJXP_PluginsService::getInstance()->loadFromPluginQueriesCache("//server_settings/param[@inherit='true']");
+        if ($cacheInherit !== null && is_array($cacheInherit)) {
+            $inheritActions = $cacheInherit;
+        } else {
+            $paramNodes = AJXP_PluginsService::searchAllManifests("//server_settings/param[@inherit='true']", "node", false, false, true);
+            if (is_array($paramNodes) && count($paramNodes)) {
+                foreach ($paramNodes as $node){
+                    $paramName = $node->getAttribute("name");
+                    $pluginId = $node->parentNode->parentNode->getAttribute("id");
+                    if(isSet($inheritActions[$pluginId])) $inheritActions[$pluginId] = array();
+                    $inheritActions[$pluginId][] = $paramName;
+                }
+            }
+            AJXP_PluginsService::getInstance()->storeToPluginQueriesCache("//server_settings/param[@inherit='true']", $inheritActions);
+        }
+
+        // Clear ACL, Keep disabled actions, keep 'inherit' parameters.
+        $childRole =  new AJXP_Role("AJXP_PARENT_USR_/");
+        $childRole->bunchUpdate(array(
+            "ACL"       => array(),
+            "ACTIONS"   => $parentRole->listAllActionsStates(),
+            "APPLIES"   => array(),
+            "PARAMETERS"=> array()));
+        $params = $parentRole->listParameters();
+
+        foreach($params as $scope => $plugData){
+            foreach($plugData as $pId => $paramData){
+                if(!isSet($inheritActions[$pId])) continue;
+                foreach($paramData as $pName => $pValue){
+                    $childRole->setParameterValue($pId, $pName, $pValue, $scope);
+                }
+            }
+        }
+
+        return $childRole;
+    }
+
+    /**
      * Get all defined roles
      * @static
      * @param array $roleIds
@@ -933,7 +1012,7 @@ class AuthService
         $repoList = null;
         foreach(self::$roles as $roleId => $roleObject){
             if(is_a($roleObject, "AjxpRole")){
-                if($repoList == null) $repoList = ConfService::getRepositoriesList();
+                if($repoList == null) $repoList = ConfService::getRepositoriesList("all");
                 $newRole = new AJXP_Role($roleId);
                 $newRole->migrateDeprectated($repoList, $roleObject);
                 self::$roles[$roleId] = $newRole;

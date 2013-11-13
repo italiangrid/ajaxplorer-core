@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -34,6 +34,15 @@ class AjxpScheduler extends AJXP_Plugin{
 
     }
 
+    public function init($options){
+        parent::init($options);
+        $u = AuthService::getLoggedUser();
+        if($u == null) return;
+        if($u->getGroupPath() != "/"){
+            $this->enabled = false;
+        }
+    }
+
     function getDbFile(){
         if(!isSet($this->db)){
             $this->db = $this->getPluginWorkDir(true). "/calendar.json" ;
@@ -48,7 +57,7 @@ class AjxpScheduler extends AJXP_Plugin{
 
     function performChecks(){
         if(!ConfService::backgroundActionsSupported()) {
-            throw new Exception("The command line must be supported. See 'AjaXplorer Core Options'.");
+            throw new Exception("The command line must be supported. See 'Pydio Core Options'.");
         }
         if(!is_dir(dirname($this->getDbFile()))) {
             throw new Exception("Could not create the db folder!");
@@ -269,9 +278,11 @@ class AjxpScheduler extends AJXP_Plugin{
     }
 
     function placeConfigNode(&$configTree){
+        $mess = ConfService::getMessages();
         if(isSet($configTree["admin"])){
             $configTree["admin"]["CHILDREN"]["scheduler"] = array(
-                "LABEL" => "Scheduler",
+                "LABEL" => $mess["action.scheduler.18"],
+                "DESCRIPTION" => $mess["action.scheduler.22"],
                 "ICON" => "scheduler/ICON_SIZE/player_time.png",
                 "LIST" => array($this, "listTasks"));
         }
@@ -280,7 +291,7 @@ class AjxpScheduler extends AJXP_Plugin{
     function listTasks($action, $httpVars, $postProcessData){
 
         $mess =ConfService::getMessages();
-        AJXP_XMLWriter::renderHeaderNode("tree", "Scheduler", false, array("icon" => "scheduler/ICON_SIZE/player_time.png"));
+        AJXP_XMLWriter::renderHeaderNode("/admin/scheduler", "Scheduler", false, array("icon" => "scheduler/ICON_SIZE/player_time.png"));
         AJXP_XMLWriter::sendFilesListComponentConfig('<columns switchGridMode="filelist" switchDisplayMode="list"  template_name="action.scheduler_list">
      			<column messageId="action.scheduler.12" attributeName="ajxp_label" sortType="String"/>
      			<column messageId="action.scheduler.2" attributeName="schedule" sortType="String"/>

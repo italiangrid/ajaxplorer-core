@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -33,7 +33,7 @@ class IMagickPreviewer extends AJXP_Plugin {
 	protected $useOnTheFly = false;
 
     protected $imagickExtensions = array("pdf", "svg", "tif", "tiff", "psd", "xcf", "eps", "cr2");
-    protected $unoconvExtensios = array("xls", "xlsx", "ods", "doc", "docx", "odt", "ppt", "pptx", "odp", "rtf");
+    protected $unoconvExtensios = array("xls", "xlt", "xlsx", "xltx", "ods", "doc", "dot", "docx", "dotx", "odt", "ppt", "pptx", "odp", "rtf");
 
     public function loadConfigs($configsData){
         parent::loadConfigs($configsData);
@@ -53,12 +53,13 @@ class IMagickPreviewer extends AJXP_Plugin {
 		if(!$repository->detectStreamWrapper(true)){
 			return false;
 		}
-		if(!is_array($this->pluginConf) || !isSet($this->pluginConf["IMAGE_MAGICK_CONVERT"])){
+        $convert = $this->getFilteredOption("IMAGE_MAGICK_CONVERT");
+		if(empty($convert)){
 			return false;
 		}
 		$streamData = $repository->streamData;		
     	$destStreamURL = $streamData["protocol"]."://".$repository->getId();
-    	$flyThreshold = 1024*1024*intval($this->pluginConf["ONTHEFLY_THRESHOLD"]);
+    	$flyThreshold = 1024*1024*intval($this->getFilteredOption("ONTHEFLY_THRESHOLD", $repository->getId()));
 		    	
 		if($action == "imagick_data_proxy"){
 			$this->extractAll = false;
@@ -175,10 +176,11 @@ class IMagickPreviewer extends AJXP_Plugin {
 	protected function listPreviewFiles($file, $prefix){
 		$files = array();
 		$index = 0;
-		if(isset($this->pluginConf["UNOCONV"]) && !empty($this->pluginConf["UNOCONV"])){
+        $unoconv =  $this->getFilteredOption("UNOCONV");
+		if(!empty($unoconv)){
 			$officeExt = array('xls', 'xlsx', 'ods', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'rtf');
 			$extension = pathinfo($file, PATHINFO_EXTENSION);
-			if(in_array($extension, $officeExt)){
+			if(in_array(strtolower($extension), $officeExt)){
 				$unoDoc = $prefix."_unoconv.pdf";
 				if(is_file($unoDoc)) $file = $unoDoc;
 			}			
@@ -199,11 +201,12 @@ class IMagickPreviewer extends AJXP_Plugin {
 	}
 	
 	public function generateJpegsCallback($masterFile, $targetFile){
-		$unoconv = false;
-		if(isset($this->pluginConf["UNOCONV"]) && !empty($this->pluginConf["UNOCONV"])){
-			$unoconv = $this->pluginConf["UNOCONV"];
+        $unoconv =  $this->getFilteredOption("UNOCONV");
+		if(!empty($unoconv)){
 			$officeExt = array('xls', 'xlsx', 'ods', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'rtf');
-		}
+		}else{
+            $unoconv = false;
+        }
 
         $extension = pathinfo($masterFile, PATHINFO_EXTENSION);
         $node = new AJXP_Node($masterFile);
@@ -232,11 +235,14 @@ class IMagickPreviewer extends AJXP_Plugin {
 			@set_time_limit(90);
 		}
 		chdir($workingDir);
-		if($unoconv !== false && in_array($extension, $officeExt)){
+		if($unoconv !== false && in_array(strtolower($extension), $officeExt)){
 			$unoDoc = str_replace(".jpg", "_unoconv.pdf", $tmpFileThumb);
 			if(!is_file($tmpFileThumb)){
-				// Create PDF Version now
-				$unoconv =  "HOME=/tmp ".$this->pluginConf["UNOCONV"]." --stdout -f pdf ".escapeshellarg($masterFile)." > ".escapeshellarg(basename($unoDoc));
+                if (stripos(PHP_OS, "win") === 0) {
+                    $unoconv = $unoconv." -o ".escapeshellarg(basename($unoDoc))." -f pdf ".escapeshellarg($masterFile);
+                } else {
+				    $unoconv =  "HOME=/tmp ".$unoconv." --stdout -f pdf ".escapeshellarg($masterFile)." > ".escapeshellarg(basename($unoDoc));
+                }
 				exec($unoconv, $out, $return);
 			}
 			if(is_file($unoDoc)){
@@ -257,9 +263,20 @@ class IMagickPreviewer extends AJXP_Plugin {
 				if($this->extractAll) $tmpFileThumb = str_replace(".jpg", "-0.jpg", $tmpFileThumb);
 			}
 		}
-		$params = ($this->extractAll?"-quality ".$this->pluginConf["IM_VIEWER_QUALITY"]:"-resize 250 -quality ".$this->pluginConf["IM_THUMB_QUALITY"]);
-		$cmd = $this->pluginConf["IMAGE_MAGICK_CONVERT"]." ".escapeshellarg(($masterFile).$pageLimit)." ".$params." ".escapeshellarg($tmpFileThumb);
-		AJXP_Logger::logAction("IMagick Command : $cmd");
+
+        $customOptions = $this->getFilteredOption("IM_CUSTOM_OPTIONS");
+        $customEnvPath = $this->getFilteredOption("ADDITIONAL_ENV_PATH");
+        $viewerQuality = $this->getFilteredOption("IM_VIEWER_QUALITY");
+        $thumbQuality = $this->getFilteredOption("IM_THUMB_QUALITY");
+        if(empty($customOptions)){
+            $customOptions = "";
+        }
+        if(!empty($customEnvPath)){
+            putenv("PATH=".getenv("PATH").":".$customEnvPath);
+        }
+        $params = ($this->extractAll?"-quality ".$viewerQuality:"-resize 250 ".$customOptions." -quality ".$thumbQuality);
+        $cmd = $this->getFilteredOption("IMAGE_MAGICK_CONVERT")." ".escapeshellarg(($masterFile).$pageLimit)." ".$params." ".escapeshellarg($tmpFileThumb);
+		AJXP_Logger::debug("IMagick Command : $cmd");
 		session_write_close(); // Be sure to give the hand back
 		exec($cmd, $out, $return);
 		if(is_array($out) && count($out)){
@@ -323,4 +340,3 @@ class IMagickPreviewer extends AJXP_Plugin {
 
 	
 }
-?>

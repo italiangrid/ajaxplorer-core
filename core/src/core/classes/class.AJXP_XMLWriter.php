@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -86,10 +86,35 @@ class AJXP_XMLWriter
      * @param integer $dirsCount
      * @return void
      */
-	static function renderPaginationData($count, $currentPage, $totalPages, $dirsCount = -1){
-		$string = '<pagination count="'.$count.'" total="'.$totalPages.'" current="'.$currentPage.'" overflowMessage="306" icon="folder.png" openicon="folder_open.png" dirsCount="'.$dirsCount.'"/>';		
+/***************** ORIGINALE ***********/  
+/*
+    public static function renderPaginationData($count, $currentPage, $totalPages, $dirsCount = -1, $remoteSortAttributes = null)
+    {
+        $remoteSortString = "";
+        if(is_array($remoteSortAttributes)){
+            foreach($remoteSortAttributes as $k => $v) $remoteSortString .= " $k='$v'";
+        }
+        $string = '<pagination count="'.$count.'" total="'.$totalPages.'" current="'.$currentPage.'" overflowMessage="306" icon="folder.png" openicon="folder_open.png" dirsCount="'.$dirsCount.'"'.$remoteSortString.'/>';
 		AJXP_XMLWriter::write($string, true);
 	}
+	*/	
+/***************** FINE ORIGINALE ***********/
+	
+	/***************** MODIFICATO DA NOI ***********/    
+	public static function renderPaginationData($count, $currentPage, $totalPages, $dirsCount = -1, $limitPerPage = 0, $position = 0, $length = 0, $folders = 0){
+		$remoteSortString = "";
+        if(is_array($remoteSortAttributes)){
+            foreach($remoteSortAttributes as $k => $v) $remoteSortString .= " $k='$v'";
+        }
+		if ($limitPerPage != 0) {
+			$string = '<pagination count="'.$count.'" limitPerPage="'.$limitPerPage.'" total="'.$totalPages.'" current="'.$currentPage.'" position="'.$position.'" length="'.$length.'" folders="'.$folders.'" overflowMessage="306" icon="folder.png" openicon="folder_open.png" dirsCount="'.$dirsCount.'"/>';	
+		} else {
+			$string = '<pagination count="'.$count.'" total="'.$totalPages.'" current="'.$currentPage.'" overflowMessage="306" icon="folder.png" openicon="folder_open.png" dirsCount="'.$dirsCount.'"/>';
+		}	
+		AJXP_XMLWriter::write($string, true);
+	}
+/***************** FINE MODIFICA ***********/
+
 	/**
      * Prints out the XML headers and preamble, then an open node
      * @static
@@ -406,10 +431,17 @@ class AJXP_XMLWriter
      * @static
      * @param $allBookmarks
      * @param bool $print
+     * @param string $format legacy|node_list
      * @return string
      */
-	static function writeBookmarks($allBookmarks, $print = true)
+	static function writeBookmarks($allBookmarks, $print = true, $format = "legacy")
 	{
+        if($format == "node_list") {
+            $driver = ConfService::loadRepositoryDriver();
+            if(!is_a($driver, "AjxpWrapperProvider")){
+                $driver = false;
+            }
+        }
 		$buffer = "";
 		foreach ($allBookmarks as $bookmark)
 		{
@@ -421,7 +453,16 @@ class AJXP_XMLWriter
 				$path = $bookmark;
 				$title = basename($bookmark);
 			}
-			$buffer .= "<bookmark path=\"".AJXP_Utils::xmlEntities($path)."\" title=\"".AJXP_Utils::xmlEntities($title)."\"/>";
+            if($format == "node_list"){
+                if($driver){
+                    $node = new AJXP_Node($driver->getResourceUrl($path));
+                    $buffer .= AJXP_XMLWriter::renderAjxpNode($node, true, false);
+                }else{
+                    $buffer .= AJXP_XMLWriter::renderNode($path, $title, false, array('icon' => "mime_empty.png"), true, false);
+                }
+            }else{
+                $buffer .= "<bookmark path=\"".AJXP_Utils::xmlEntities($path)."\" title=\"".AJXP_Utils::xmlEntities($title)."\"/>";
+            }
 		}
 		if($print) print $buffer;
 		else return $buffer;
@@ -573,8 +614,12 @@ class AJXP_XMLWriter
                 $label = $uObject->personalRole->filterParameterValue("core.conf", "USER_DISPLAY_NAME", AJXP_REPO_SCOPE_ALL, $uId);
                 $isSharedString =  "owner='".$label."'";
             }
-
-            $xmlString = "<repo access_type=\"".$repoObject->accessType."\" id=\"".$repoId."\"$rightString $streamString $slugString $isSharedString><label>".SystemTextEncoding::toUTF8(AJXP_Utils::xmlEntities($repoObject->getDisplay()))."</label>".$repoObject->getClientSettings()."</repo>";
+            $descTag = "";
+            $description = $repoObject->getDescription();
+            if(!empty($description)){
+                $descTag = '<description>'.AJXP_Utils::xmlEntities($description, true).'</description>';
+            }
+            $xmlString = "<repo access_type=\"".$repoObject->accessType."\" id=\"".$repoId."\"$rightString $streamString $slugString $isSharedString><label>".SystemTextEncoding::toUTF8(AJXP_Utils::xmlEntities($repoObject->getDisplay()))."</label>".$descTag.$repoObject->getClientSettings()."</repo>";
             if($toLast){
                 $lastString = $xmlString;
             }else{
@@ -610,5 +655,3 @@ class AJXP_XMLWriter
 	}
 	
 }
-
-?>

@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -41,7 +41,7 @@ class ftpAuthDriver extends AbstractAuthDriver {
 		parent::parseSpecificContributions($contribNode);
 		if($contribNode->nodeName != "actions") return ;
 		$actionXpath=new DOMXPath($contribNode->ownerDocument);
-		if(!isset($this->options["FTP_LOGIN_SCREEN"]) || $this->options["FTP_LOGIN_SCREEN"] != "TRUE"){
+		if(!isset($this->options["FTP_LOGIN_SCREEN"]) || $this->options["FTP_LOGIN_SCREEN"] != "TRUE" || $this->options["FTP_LOGIN_SCREEN"] === false){
 			// Remove "ftp_login" && "ftp_set_data" actions
 			$nodeList = $actionXpath->query('action[@name="dynamic_login"]', $contribNode);
 			if(!$nodeList->length) return ;
@@ -54,15 +54,14 @@ class ftpAuthDriver extends AbstractAuthDriver {
 			$contribNode->removeChild($node = $nodeList->item(0));
 		}else{
 			// Replace "login" by "dynamic_login"
-			$loginList = $actionXpath->query('action[@name="login"]', $contribNode);			
-			if($loginList->length){
-				unset($this->actions["login"]);
-				$contribNode->removeChild($loginList->item(0));									
+			$loginList = $actionXpath->query('action[@name="login"]', $contribNode);
+			if($loginList->length && $loginList->item(0)->getAttribute("auth_ftp_impl") == null){
+				$contribNode->removeChild($loginList->item(0));
 			}
 			$dynaLoginList = $actionXpath->query('action[@name="dynamic_login"]', $contribNode);
 			if($dynaLoginList->length){
 				$dynaLoginList->item(0)->setAttribute("name", "login");
-				$this->actions["login"] = $this->actions["dynamic_login"];
+				$dynaLoginList->item(0)->setAttribute("auth_ftp_impl", "true");
 			}
 		}
 	}
@@ -127,7 +126,7 @@ class ftpAuthDriver extends AbstractAuthDriver {
                 return "ERROR: ".$e->getMessage();
             }
         }
-        return "SUCCESS; Could succesfully connect to the FTP server!";
+        return "SUCCESS: Could succesfully connect to the FTP server!";
     }
 
 	function checkPassword($login, $pass, $seed){

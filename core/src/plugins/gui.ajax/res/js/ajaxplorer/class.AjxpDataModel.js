@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -205,10 +205,20 @@ Class.create("AjxpDataModel", {
 		if(this._contextNode && this._contextNode == ajxpDataNode && this._currentRep  == ajxpDataNode.getPath() && !forceEvent){
 			return; // No changes
 		}
-		this._contextNode = ajxpDataNode;
+        if(!ajxpDataNode) return;
+        if(this._contextNodeReplacedObserver && this._contextNode){
+            this._contextNode.stopObserving("node_replaced", this._contextNodeReplacedObserver);
+        }
+        this._contextNode = ajxpDataNode;
 		this._currentRep = ajxpDataNode.getPath();
         this.publish("context_changed", ajxpDataNode);
+        if(!this._contextNodeReplacedObserver) this._contextNodeReplacedObserver = this.contextNodeReplaced.bind(this);
+        ajxpDataNode.observe("node_replaced", this._contextNodeReplacedObserver);
 	},
+
+    contextNodeReplaced: function(newNode){
+        this.setContextNode(newNode);
+    },
 
     /**
      *
@@ -507,6 +517,64 @@ Class.create("AjxpDataModel", {
 		}
 	},
 	
+	
+		//////////MODIFICATO DA NOI/////////////////////
+	        getFileSumSizes : function(separator){
+                if(!this._selectedNodes.length)
+                {
+                        alert('Please select a file!');
+                        return false;
+                }
+                var tmp = new Array(this._selectedNodes.length);
+                var sum=0;
+                for(i=0;i<this._selectedNodes.length;i++)
+                {
+//                      tmp[i] = this._selectedNodes[i].getTotal_info();
+                        tmp[i] = this._selectedNodes[i].getMetadata().get('bytesize');
+                        sum=parseInt(sum)+parseInt(tmp[i]);
+                }
+/*              
+                if(separator){
+                        return tmp.join(separator);
+                }else{
+                        return tmp;
+                }
+*/
+                return sum;
+        },
+        
+       
+       getFileSizes : function(separator){
+                if(!this._selectedNodes.length)
+                {
+                        alert('Please select a file!');
+                        return false;
+                }
+                var tmp = new Array(this._selectedNodes.length);
+                var sum=0;
+                var k=0;
+                for(i=0;i<this._selectedNodes.length;i++)
+                {
+                	if(this._selectedNodes[i].getMetadata().get('is_file')=="true"){
+//                      tmp[i] = this._selectedNodes[i].getTotal_info();
+                        tmp[k] = this._selectedNodes[i].getMetadata().get('bytesize');
+                        k++;
+                    }    
+//                        sum=parseInt(sum)+parseInt(tmp[i]);
+                }
+/*              
+                if(separator){
+                        return tmp.join(separator);
+                }else{
+                        return tmp;
+                }
+*/
+                return tmp;
+        },
+ 
+        
+//////////FINE MODIFICA/////////////////////
+	
 	/**
 	 * Get all the filenames of the current context node children
 	 * @param separator String If passed, will join the array as a string
@@ -535,16 +603,19 @@ Class.create("AjxpDataModel", {
 	 * @param newFileName String The name to check
 	 * @returns Boolean
 	 */
-	fileNameExists: function(newFileName, local)
+	fileNameExists: function(newFileName, local, contextNode)
 	{
+        if(!contextNode){
+            contextNode = this._contextNode;
+        }
         if(local){
-            var test = this._contextNode.getPath() + "/" + newFileName;
-            return this._contextNode.getChildren().detect(function(c){
+            var test = contextNode.getPath() + "/" + newFileName;
+            return contextNode.getChildren().detect(function(c){
                 return c.getPath() == test;
             });
         }else{
             var nodeExists = false;
-            this.loadPathInfoSync(this._contextNode.getPath() + "/" + newFileName, function(foundNode){
+            this.loadPathInfoSync(contextNode.getPath() + "/" + newFileName, function(foundNode){
                 nodeExists = true;
             });
             return nodeExists;

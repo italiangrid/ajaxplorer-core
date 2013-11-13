@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -42,23 +42,25 @@ class SimpleUploadProcessor extends AJXP_Plugin {
 		if(!isSet($httpVars["input_stream"])){
 			return false;
 		}
-		//AJXP_Logger::debug("SimpleUpload::preProcess", $httpVars);
-				
-	    $headersCheck = (
-	        // basic checks
-	        isset(
-	            //$_SERVER['CONTENT_TYPE'],
+
+	    $headersCheck = isset(
 	            $_SERVER['CONTENT_LENGTH'],
-	            $_SERVER['HTTP_X_FILE_SIZE'],
 	            $_SERVER['HTTP_X_FILE_NAME']
-	        ) &&
-	        //$_SERVER['CONTENT_TYPE'] === 'multipart/form-data' &&
-	        $_SERVER['CONTENT_LENGTH'] === $_SERVER['HTTP_X_FILE_SIZE']
-	    );
+	        ) ;
+        if(isSet($_SERVER['HTTP_X_FILE_SIZE'])){
+            if($_SERVER['CONTENT_LENGTH'] != $_SERVER['HTTP_X_FILE_SIZE'])  {
+                exit('Warning, wrong headers');
+            }
+        }
 	    $fileNameH = $_SERVER['HTTP_X_FILE_NAME'];
-	    $fileSizeH = $_SERVER['HTTP_X_FILE_SIZE'];		
-	       
-	    if($headersCheck){
+	    $fileSizeH = $_SERVER['CONTENT_LENGTH'];
+
+        if(dirname($httpVars["dir"]) == "/" && basename($httpVars["dir"]) == $fileNameH){
+            $httpVars["dir"] = "/";
+        }
+        AJXP_Logger::debug("SimpleUpload::preProcess", $httpVars);
+
+        if($headersCheck){
 	        // create the object and assign property
         	$fileVars["userfile_0"] = array(
         		"input_upload" => true,
@@ -103,7 +105,13 @@ class SimpleUploadProcessor extends AJXP_Plugin {
                     AJXP_XMLWriter::writeNodesDiff(array("ADD" => array($result["CREATED_NODE"])), true);
                 }
                 AJXP_XMLWriter::close();
-				//exit("OK");
+                /* for further implementation */
+                if(!$result["PREVENT_NOTIF"]){
+                    if(isset($result["CREATED_NODE"])){
+                        AJXP_Controller::applyHook("node.change", array(null, $result["CREATED_NODE"], false));
+                    }
+                }
+                //exit("OK");
 			}
 		}
 		
@@ -136,7 +144,7 @@ class SimpleUploadProcessor extends AJXP_Plugin {
 			unlink($destStreamURL.$chunks[$i]);
 		}
 		fclose($newDest);
-		
+        AJXP_Controller::applyHook("node.change", array(null, new AJXP_Node($newDest), false));
 	}
 }
 ?>

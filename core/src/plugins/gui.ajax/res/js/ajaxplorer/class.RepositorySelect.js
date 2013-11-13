@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -128,8 +128,12 @@ Class.create("RepositorySelect", {
                     return;
                 }
 
+                var label = '<span class="menu_label">' + repoObject.getLabel() + '</span>';
+                if(repoObject.getDescription()){
+                    label += '<span class="menu_description">' + repoObject.getDescription() + '</span>';
+                }
                 var actionData = {
-					name:repoObject.getLabel(),
+					name:label,
 					alt:repoObject.getLabel() + (repoObject.getOwner() ? " ("+MessageHash[413]+" " + repoObject.getOwner()+ ")":""),
 					image:repoObject.getIcon(),
                     icon_class:"icon-hdd",
@@ -168,12 +172,18 @@ Class.create("RepositorySelect", {
         actions.sort(fonc);
         if(sharedActions.length){
 	        sharedActions.sort(fonc);
-	        actions.push({separator:true});	        
+	        actions.push({
+                separator:true,
+                menuTitle:MessageHash[469]
+            });
 	        actions = actions.concat(sharedActions);
         }
         if(lastActions.length){
 	        lastActions.sort(fonc);
-	        actions.push({separator:true});
+	        actions.push({
+                separator:true,
+                menuTitle:'Other Actions'
+            });
 	        actions = actions.concat(lastActions);
         }
 
@@ -186,11 +196,16 @@ Class.create("RepositorySelect", {
         }
 
         var menuItems = $A();
+        if(!this.loadedOnce) {
+            ajaxplorer.actionBar.loadActionsFromRegistry(ajaxplorer.getXmlRegistry());
+            this.loadedOnce = true;
+        }
         var otherActions = ajaxplorer.actionBar.getActionsForAjxpWidget("RepositorySelect", this.element.id).each(function(otherAction){
             menuItems.push({
                 name:otherAction.getKeyedText(),
                 alt:otherAction.options.title,
                 action_id:otherAction.options.name,
+                icon_class:otherAction.options.icon_class,
                 className:"edit",
                 image:resolveImageSource(otherAction.options.src, '/images/actions/ICON_SIZE', 16),
                 callback:function(e){this.apply();}.bind(otherAction)
@@ -206,7 +221,7 @@ Class.create("RepositorySelect", {
 			this.repoMenu.refreshList();
 		}else{
 			this.repoMenu = new Proto.Menu({			
-				className: 'menu rootDirChooser',
+				className: 'menu rootDirChooser menuDetails',
 				mouseClick:(this.options.menuEvent? this.options.menuEvent : 'left'),
 				anchor:button,
                 position: (this.options.menuPosition? this.options.menuPosition : 'bottom'),
@@ -216,12 +231,12 @@ Class.create("RepositorySelect", {
 				anchorTitle:MessageHash[200],
 				topOffset:(this.options.menuOffsetTop !== undefined ? this.options.menuOffsetTop: 2),
 				leftOffset:(this.options.menuOffsetLeft !== undefined ? this.options.menuOffsetLeft: -127),
-				menuTitle:MessageHash[200],
+				menuTitle:MessageHash[468],
 				menuItems: actions,
                 menuMaxHeight:this.options.menuMaxHeight,
 				fade:true,
 				zIndex:1500
-			});		
+			});
 			this.notify("createMenu");
 		}
 		if(actions.length) button.removeClassName('disabled');

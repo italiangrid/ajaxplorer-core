@@ -13,15 +13,16 @@ ul.notification_list{
     overflow-y: auto !important;
 }
 
-
-/*
-#feed_content li:nth-child(2n){
-    background-color: #888888;
-}
-*/
-
-#feed_content li{
-    padding: 0;
+.badge {
+    background-color: white;
+    border-radius: 3px;
+    display: inline-block;
+    margin: 0 1px 0 3px;
+    font-size: 11px;
+    color: #666;
+    font-weight: bold;
+    padding: 0 3px 0 4px;
+    text-align: center;
 }
 
 #feed_content a{
@@ -41,7 +42,7 @@ display: inline-block;
 float: left;
 }
 
-eed_content span.event_label {
+#feed_content span.event_label {
 display: inline-block;
 width: 150px;
 }
@@ -69,4 +70,9 @@ width: 150px;
 .notif_event_label {
     font-size: 14px;
     letter-spacing: 1px;
+}
+
+#feed_content .ui360container.nobackground {
+    float: left;
+    margin-left: -6px !important;
 }

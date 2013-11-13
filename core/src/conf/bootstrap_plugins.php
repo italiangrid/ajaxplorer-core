@@ -23,6 +23,16 @@
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
+/********************************************
+ * CUSTOM VARIABLES HOOK
+ ********************************************/
+/**
+ * This is a sample "hard" hook, directly included. See directly the PluginSkeleton class
+ * for more explanation.
+ */
+//require_once AJXP_INSTALL_PATH."/plugins/action.skeleton/class.PluginSkeleton.php";
+//AJXP_Controller::registerIncludeHook("vars.filter", array("PluginSkeleton", "filterVars"));
+
 /*********************************************************/
 /* PLUGINS DEFINITIONS
 /* Drivers will define how the application will work. For 
@@ -39,14 +49,17 @@ defined('AJXP_EXEC') or die( 'Access not allowed');
 /* it here.
 /*********************************************************/
 $PLUGINS = array(
-    /*
 	"CONF_DRIVER" => array(
 		"NAME"		=> "serial",
 		"OPTIONS"	=> array(
 			"REPOSITORIES_FILEPATH"	=> "AJXP_DATA_PATH/plugins/conf.serial/repo.ser",
 			"ROLES_FILEPATH"		=> "AJXP_DATA_PATH/plugins/auth.serial/roles.ser",
 			"USERS_DIRPATH"			=> "AJXP_DATA_PATH/plugins/auth.serial",
-            "FAST_CHECKS"		    => false,
+            "FAST_CHECKS"		    => true,
+			"CUSTOM_DATA"			=> array(
+					"email"	=> "Email",
+					"country" => "Country"
+				)
 			)
 	),
 	"AUTH_DRIVER" => array(
@@ -54,10 +67,24 @@ $PLUGINS = array(
 		"OPTIONS"	=> array(
 			"LOGIN_REDIRECT"		=> false,
 			"USERS_FILEPATH"		=> "AJXP_DATA_PATH/plugins/auth.serial/users.ser",
-			"AUTOCREATE_AJXPUSER" 	=> false,
-            "FAST_CHECKS"		    => false,
+			"AUTOCREATE_AJXPUSER" 	=> true,
+            "FAST_CHECKS"		    => true,
 			"TRANSMIT_CLEAR_PASS"	=> false )
 	),
+	"AUTH_DRIVER" => array(
+                        "NAME"    => "remote",
+                        "OPTIONS" => array(
+                                       "SLAVE_MODE" => true,
+                        "LOGIN_REDIRECT"		=> true,           
+                                       "USERS_FILEPATH" => "AJXP_DATA_PATH/plugins/auth.serial/users.ser",
+                                       		"LOGIN_URL" => "http://gridlab07.cnaf.infn.it:8090/ajp/ajaxplorer_login.html",
+                                              "LOGOUT_URL" => "http://gridlab07.cnaf.infn.it:8090/ajp/ajaxplorer_logout.html",
+                                       "SECRET" => "123456",
+                                       "AUTOCREATE_AJXPUSER" => true,
+                                       "TRANSMIT_CLEAR_PASS" => false,
+                                       "FAST_CHECKS"		 => true
+                                     )
+    ),
     "LOG_DRIVER" => array(
          "NAME" => "text",
          "OPTIONS" => array(
@@ -66,5 +93,4 @@ $PLUGINS = array(
              "LOG_CHMOD" => 0770
          )
     )
-    */
 );

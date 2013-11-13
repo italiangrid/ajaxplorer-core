@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -24,7 +24,7 @@ defined('AJXP_EXEC') or die( 'Access not allowed');
  * @package AjaXplorer
  * @subpackage SabreDav
  */
-class AJXP_Sabre_Node implements Sabre_DAV_INode, Sabre_DAV_IProperties
+class AJXP_Sabre_Node implements Sabre\DAV\INode, Sabre\DAV\IProperties
 {
 
     /**
@@ -52,7 +52,7 @@ class AJXP_Sabre_Node implements Sabre_DAV_INode, Sabre_DAV_IProperties
 
     /**
      * @return AjxpWrapperProvider
-     * @throws Sabre_DAV_Exception_FileNotFound
+     * @throws Sabre\DAV\Exception\FileNotFound
      */
     function getAccessDriver(){
         if(!isset($this->accessDriver)){
@@ -61,7 +61,7 @@ class AJXP_Sabre_Node implements Sabre_DAV_INode, Sabre_DAV_IProperties
             ConfService::getConfStorageImpl();
             $this->accessDriver = ConfService::loadRepositoryDriver();
             if(!$this->accessDriver instanceof AjxpWrapperProvider){
-                throw new Sabre_DAV_Exception_FileNotFound( $RID );
+                throw new Sabre\DAV\Exception\FileNotFound( $RID );
             }
             $this->accessDriver->detectStreamWrapper(true);
         }
@@ -143,7 +143,7 @@ class AJXP_Sabre_Node implements Sabre_DAV_INode, Sabre_DAV_IProperties
      * Updates properties on this node,
      *
      * @param array $properties
-     * @see Sabre_DAV_IProperties::updateProperties
+     * @see Sabre\DAV\IProperties::updateProperties
      * @return bool|array
      */
     public function updateProperties($properties) {

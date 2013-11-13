@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die('Access not allowed');
@@ -47,20 +47,28 @@ class QuotaComputer extends AJXP_Plugin
 
     protected function getWorkingPath(){
         $repo = ConfService::getRepository();
+        $clearParent = null;
         // SPECIAL : QUOTA MUST BE COMPUTED ON PARENT REPOSITORY FOLDER
         if($repo->hasParent()){
             $parentOwner = $repo->getOwner();
-            $repo = ConfService::getRepositoryById($repo->getParentId());
-            $originalUser = AuthService::getLoggedUser();
-            $loggedUser = AuthService::getLoggedUser();
-            if(!$loggedUser->hasParent()){
-                $loggedUser->setParent($parentOwner);
+            if($parentOwner !== null){
+                $repo = ConfService::getRepositoryById($repo->getParentId());
+                $originalUser = AuthService::getLoggedUser();
+                $loggedUser = AuthService::getLoggedUser();
+                if(!$loggedUser->hasParent()){
+                    $loggedUser->setParent($parentOwner);
+                    $clearParent = null;
+                }else{
+                    $clearParent = $loggedUser->getParent();
+                }
+                $loggedUser->setResolveAsParent(true);
+                AuthService::updateUser($loggedUser);
             }
-            $loggedUser->setResolveAsParent(true);
-            AuthService::updateUser($loggedUser);
         }
         $path = $repo->getOption("PATH");
         if(iSset($originalUser)){
+            $originalUser->setParent($clearParent);
+            $originalUser->setResolveAsParent(false);
             AuthService::updateUser($originalUser);
         }
 
@@ -79,9 +87,9 @@ class QuotaComputer extends AJXP_Plugin
             return null;
         }
         $delta = $newSize;
+        $path = $this->getWorkingPath();
         $quota = $this->getAuthorized();
         $soft = $this->getSoftLimit();
-        $path = $this->getWorkingPath();
         $q = $this->getUsage($path);
         AJXP_Logger::debug("QUOTA : Previous usage was $q");
         if($q === false){
@@ -163,10 +171,10 @@ class QuotaComputer extends AJXP_Plugin
             $this->saveUserData($data);
         }
 
-        if($this->pluginConf["USAGE_SCOPE"] == "local"){
-            return intval($data["REPO_USAGES"][$repo]);
+        if($this->getFilteredOption("USAGE_SCOPE", $repo) == "local"){
+            return floatval($data["REPO_USAGES"][$repo]);
         }else{
-            return array_sum(array_map("intval", $data["REPO_USAGES"]));
+            return array_sum(array_map("floatval", $data["REPO_USAGES"]));
         }
 
     }
@@ -194,7 +202,7 @@ class QuotaComputer extends AJXP_Plugin
             $obj = new COM ( 'scripting.filesystemobject' );
             if ( is_object ( $obj ) ){
                 $ref = $obj->getfolder ( $dir );
-                $s = intval($ref->size);
+                $s = floatval($ref->size);
                 $obj = null;
             }else{
                 echo 'can not create object';
@@ -205,7 +213,7 @@ class QuotaComputer extends AJXP_Plugin
             $io = popen ( '/usr/bin/du '.$option.' ' . escapeshellarg($dir), 'r' );
            	$size = fgets ( $io, 4096);
             $size = trim(str_replace($dir, "", $size));
-            $s = intval($size);
+            $s =  floatval($size);
             if(PHP_OS == "Darwin") $s = $s * 1024;
            	//$s = intval(substr ( $size, 0, strpos ( $size, ' ' ) ));
            	pclose ( $io );
@@ -229,7 +237,7 @@ class QuotaComputer extends AJXP_Plugin
                     $total_size += $size;
                 }
             } else {
-                $size = filesize(rtrim($path, '/') . '/' . $t);
+                $size = sprintf("%u", filesize(rtrim($path, '/') . '/' . $t));
                 $total_size += $size;
             }
         }

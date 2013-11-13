@@ -84,6 +84,34 @@ AJXPTree.prototype.attachListeners = function(jsNode, ajxpNode){
 			if(!this.paginated){
 				this.paginated = true;
 				if(pData.get('dirsCount')!="0"){
+				
+				///////////////// MODIFICATO DA NOI (per eliminare "No Repository" e "Too many items")/////////////////	
+			
+				if(this.text=="No Repository"){
+					if(getUrlVars()["repository_id"]==repo_code || typeof getUrlVars()["repository_id"]=='undefined'){
+//						this.updateLabel("Grid Catalog" + "" + MessageHash[pData.get('overflowMessage')]+ "");
+						this.updateLabel("Grid Catalog");
+					} else {
+						this.updateLabel("" + " (" + MessageHash[pData.get('overflowMessage')]+ ")");
+					}
+				} else {
+//					this.updateLabel(this.text + " (" + MessageHash[pData.get('overflowMessage')]+ ")");
+				}	
+			}
+		}
+			//return;
+		}else if(this.paginated){
+			this.paginated = false;
+			if(this.text=="No Repository"){
+				this.updateLabel("Default Files");
+			} else {
+				this.updateLabel(this.text);	
+			}
+		}
+///////////////// FINE MODIFICA ////////////////	
+				
+				
+/*				
 					this.updateLabel(this.text + " (" + MessageHash[pData.get('overflowMessage')]+ ")");
 				}
 			}
@@ -92,6 +120,7 @@ AJXPTree.prototype.attachListeners = function(jsNode, ajxpNode){
 			this.paginated = false;
 			this.updateLabel(this.text);
 		}
+*/		
 		var child = ajxpNode.findChildByPath(childPath);
 		if(child){
 			var jsChild = _ajxpNodeToTree(child, this);

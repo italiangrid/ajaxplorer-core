@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -123,17 +123,32 @@ class AJXP_Plugin implements Serializable{
 	}
 
     protected function getFilteredOption($optionName, $repositoryScope = AJXP_REPO_SCOPE_ALL){
-        $repo = ConfService::getRepository();
-        if($repo != null) $repositoryScope = $repo->getId();
-        if(AuthService::getLoggedUser() != null){
-            return AuthService::getLoggedUser()->mergedRole->filterParameterValue(
+        $merged = $this->options;
+        if(is_array($this->pluginConf)) $merged = array_merge($merged, $this->pluginConf);
+        $loggedUser = AuthService::getLoggedUser();
+        if($loggedUser != null){
+            if($repositoryScope == AJXP_REPO_SCOPE_ALL){
+                $repo = ConfService::getRepository();
+                if($repo != null) $repositoryScope = $repo->getId();
+            }
+            $test = $loggedUser->mergedRole->filterParameterValue(
                 $this->getId(),
                 $optionName,
                 $repositoryScope,
-                isSet($this->options[$optionName]) ? $this->options[$optionName] : null
+                isSet($merged[$optionName]) ? $merged[$optionName] : null
             );
+            if($repo != null && $repo->hasParent()){
+                $retest = $loggedUser->mergedRole->filterParameterValue(
+                    $this->getId(),
+                    $optionName,
+                    $repo->getParentId(),
+                    isSet($merged[$optionName]) ? $merged[$optionName] : null
+                );
+                if($retest != null) $test = $retest;
+            }
+            return $test;
         }else{
-            return isSet($this->options[$optionName]) ? $this->options[$optionName] : null;
+            return isSet($merged[$optionName]) ? $merged[$optionName] : null;
         }
     }
     /**

@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  *
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -174,12 +174,14 @@ class ajxpSharedAccessDriver extends AbstractAccessDriver
 		foreach ($files as $file){
             $ar = explode(".", basename($file));
             $id = array_shift($ar);
-            if(strlen($id) != 32) continue;
+            if($ar[0] != "php") continue;
+            //if(strlen($id) != 32) continue;
 			$publicletData = ShareCenter::loadPublicletData($id);
 			if(isset($publicletData["OWNER_ID"]) && $publicletData["OWNER_ID"] != $userId){
 				continue;
 			}
 			$expired = ($publicletData["EXPIRE_TIME"]!=0?($publicletData["EXPIRE_TIME"]<time()?true:false):false);
+            if(!is_a($publicletData["REPOSITORY"], "Repository")) continue;
 			AJXP_XMLWriter::renderNode(str_replace(".php", "", basename($file)), "".SystemTextEncoding::toUTF8($publicletData["REPOSITORY"]->getDisplay()).":/".SystemTextEncoding::toUTF8($publicletData["FILE_PATH"]), true, array(
 				"icon"		=> "html.png",
 				"password" => ($publicletData["PASSWORD"]!=""?$publicletData["PASSWORD"]:"-"), 
@@ -222,7 +224,7 @@ class ajxpSharedAccessDriver extends AbstractAccessDriver
 		$users = AuthService::listUsers();
 		$mess = ConfService::getMessages();
 		$loggedUser = AuthService::getLoggedUser();		
-		$repoList = ConfService::getRepositoriesList();
+		$repoList = ConfService::getRepositoriesList("all");
         $userArray = array();
 		foreach ($users as $userIndex => $userObject){
 			$label = $userObject->getId();
@@ -239,11 +241,8 @@ class ajxpSharedAccessDriver extends AbstractAccessDriver
 			$repoAccesses = array();
 			foreach ($repoList as $repoObject) {
 				if($repoObject->hasOwner() && $repoObject->getOwner() == $loggedUser->getId()){
-					if($userObject->canWrite($repoObject->getId())){
-						$repoAccesses[] = $repoObject->getDisplay()." (rw)";
-					}else if($userObject->canRead($repoObject->getId())){
-						$repoAccesses[] = $repoObject->getDisplay()." (r)";
-					}
+                    $acl = $userObject->mergedRole->getAcl($repoObject->getId());
+                    if(!empty($acl)) $repoAccesses[] = $repoObject->getDisplay()." ($acl)";
 				}
 			}			
 			print '<tree 
@@ -261,7 +260,7 @@ class ajxpSharedAccessDriver extends AbstractAccessDriver
 	}
 	
 	function listRepositories(){
-		$repos = ConfService::getRepositoriesList();
+		$repos = ConfService::getRepositoriesList("all");
 		AJXP_XMLWriter::sendFilesListComponentConfig('<columns switchGridMode="filelist"><column messageId="ajxp_conf.8" attributeName="ajxp_label" sortType="String"/><column messageId="ajxp_conf.9" attributeName="accessType" sortType="String"/><column messageId="ajxp_shared.9" attributeName="repo_accesses" sortType="String"/></columns>');		
         $repoArray = array();
         $childRepos = array();
@@ -294,12 +293,10 @@ class ajxpSharedAccessDriver extends AbstractAccessDriver
 			foreach ($users as $userId => $userObject) {
 				//if(!$userObject->hasParent()) continue;
                 if($userObject->getId() == $loggedUser->getId()) continue;
-				if($userObject->canWrite($repoIndex)){
-					$repoAccesses[] = $userId." (rw)";
-				}else if($userObject->canRead($repoIndex)){
-					$repoAccesses[] = $userId." (r)";
-				}
-			}			
+                $label = $userObject->personalRole->filterParameterValue("core.conf", "USER_DISPLAY_NAME", AJXP_REPO_SCOPE_ALL, $userId);
+                $acl = $userObject->mergedRole->getAcl($repoObject->getId());
+                if(!empty($acl)) $repoAccesses[] = $label. " (".$acl.")";
+            }
             
             $metaData = array(
             	"repository_id" => $repoIndex,

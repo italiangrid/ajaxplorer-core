@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  *
  * Core extensions and icons supported. You can add a line in this file to support
  * more extensions.
@@ -59,21 +59,21 @@ $EXTENSIONS = array(
 	array("mp3","sound.png", 59),
 	array("m4a","sound.png", 59),
 	array("aac","sound.png", 59),
-    array("xls","spreadsheet.png", 64),
-   	array("xlsx","spreadsheet.png", 64),
-   	array("ods","spreadsheet.png", 64),
-   	array("sxc","spreadsheet.png", 64),
-   	array("csv","spreadsheet.png", 64),
-   	array("tsv","spreadsheet.png", 64),
-   	array("doc","word.png", 65),
-   	array("docx","word.png", 65),
-   	array("odt","word.png", 65),
-   	array("swx","word.png", 65),
-   	array("rtf","word.png", 65),
-   	array("ppt","presentation.png", 446),
-   	array("pps","presentation.png", 446),
-   	array("odp","presentation.png", 446),
-   	array("sxi","presentation.png", 446),
+	array("xls","spreadsheet.png", 64),
+	array("xlsx","spreadsheet.png", 64),
+	array("ods","spreadsheet.png", 64),
+	array("sxc","spreadsheet.png", 64),
+	array("csv","spreadsheet.png", 64),
+	array("tsv","spreadsheet.png", 64),
+	array("doc","word.png", 65),
+	array("docx","word.png", 65),
+	array("odt","word.png", 65),
+	array("swx","word.png", 65),
+	array("rtf","word.png", 65),
+	array("ppt","presentation.png", 442),
+	array("pps","presentation.png", 442),
+	array("odp","presentation.png", 442),
+	array("sxi","presentation.png", 442),
 	array("pdf","pdf.png", 79),
 	array("mov","video.png", 80),
 	array("avi","video.png", 81),
@@ -90,5 +90,5 @@ $EXTENSIONS = array(
 	array("tif","image.png", "TIFF"),
 	array("svg","image.png", "SVG"),
 	array("psd","image.png", "Photoshop"),
+	array("ers","horo.png", "Timestamp"),
 );
-?>

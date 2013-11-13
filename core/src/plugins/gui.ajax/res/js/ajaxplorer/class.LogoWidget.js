@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 Class.create("LogoWidget", AjxpPane, {
 
@@ -34,6 +34,13 @@ Class.create("LogoWidget", AjxpPane, {
             }else{
                 this.titleDiv.update(configs.get("CUSTOM_TOP_TITLE"));
             }
+            if(!configs.get("CUSTOM_TOP_LOGO") || configs.get("CUSTOM_TOP_LOGO") == 'ajxp-remove-original'){
+                if(this.image){
+                    this.image.remove();
+                    this.image = null;
+                }
+                this.resizeImage(configs, true);
+            }
         }else if(this.titleDiv){
             this.titleDiv.remove();
             this.titleDiv = null;
@@ -45,6 +52,10 @@ Class.create("LogoWidget", AjxpPane, {
                 parameter = 'tmp_file';
             }
             var url = window.ajxpServerAccessPath + "&get_action=get_global_binary_param&"+parameter+"=" + configs.get("CUSTOM_TOP_LOGO");
+            if(configs.get("CUSTOM_TOP_LOGO").indexOf('plugins/') === 0){
+                // It's not a binary but directly an image.
+                url = configs.get("CUSTOM_TOP_LOGO");
+            }
             if(!this.image){
                 this.image  = new Image();
                 this.image.src = url;
@@ -68,29 +79,34 @@ Class.create("LogoWidget", AjxpPane, {
 
     resizeImage : function(configs, insert){
 
-        var w = this.image.width;
-        var h = this.image.height;
         var imgH, imgW;
-        if(configs.get("CUSTOM_TOP_LOGO_H")){
-            imgH = parseInt(configs.get("CUSTOM_TOP_LOGO_H")) || h;
-            imgW = parseInt(imgH * w / h);
-        }else if(configs.get("CUSTOM_TOP_LOGO_W")){
-            imgW = parseInt(configs.get("CUSTOM_TOP_LOGO_W"));
-            imgH = parseInt(imgW * h / w);
+        if(this.image){
+            var w = this.image.width;
+            var h = this.image.height;
+            if(configs.get("CUSTOM_TOP_LOGO_H")){
+                imgH = parseInt(configs.get("CUSTOM_TOP_LOGO_H")) || h;
+                imgW = parseInt(imgH * w / h);
+            }else if(configs.get("CUSTOM_TOP_LOGO_W")){
+                imgW = parseInt(configs.get("CUSTOM_TOP_LOGO_W"));
+                imgH = parseInt(imgW * h / w);
+            }
+            if(!imgW){
+                imgW = w;
+                imgH = h;
+            }
+            var imgTop = parseInt(configs.get("CUSTOM_TOP_LOGO_T")) || 0;
+            var imgLeft = parseInt(configs.get("CUSTOM_TOP_LOGO_L")) || 0;
+            this.image.setStyle({
+                position    : 'absolute',
+                height      : imgH + 'px',
+                width       : imgW + 'px',
+                top         : imgTop + 'px',
+                left        : imgLeft + 'px'
+            });
+        }else{
+            imgW = -3;
+            imgH = 0;
         }
-        if(!imgW){
-            imgW = w;
-            imgH = h;
-        }
-        var imgTop = parseInt(configs.get("CUSTOM_TOP_LOGO_T")) || 0;
-        var imgLeft = parseInt(configs.get("CUSTOM_TOP_LOGO_L")) || 0;
-        this.image.setStyle({
-            position    : 'absolute',
-            height      : imgH + 'px',
-            width       : imgW + 'px',
-            top         : imgTop + 'px',
-            left        : imgLeft + 'px'
-        });
         // Reset height
         this.htmlElement.setStyle({paddingTop:'9px'});
         if(imgH > parseInt(this.htmlElement.getHeight())){

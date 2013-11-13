@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  *
  * Description : main access point of the application, this script is called by any Ajax query.
  * Will dispatch the actions on the plugins.
@@ -26,7 +26,7 @@ include_once("base.conf.php");
 if( !isSet($_GET["action"]) && !isSet($_GET["get_action"])
     && !isSet($_POST["action"]) && !isSet($_POST["get_action"])
     && defined("AJXP_FORCE_SSL_REDIRECT") && AJXP_FORCE_SSL_REDIRECT === true
-    && $_SERVER['SERVER_PORT'] != 443) {
+    && $_SERVER['HTTPS'] != "on") {
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']);
     exit();
@@ -61,7 +61,9 @@ ConfService::start();
 $confStorageDriver = ConfService::getConfStorageImpl();
 require_once($confStorageDriver->getUserClassFileName());
 //new AjxpSessionHandler();
-session_name("AjaXplorer");
+if(!isSet($OVERRIDE_SESSION)){
+    session_name("AjaXplorer");
+}
 session_start();
 
 if(isSet($_GET["tmp_repository_id"])){
@@ -137,8 +139,7 @@ if(AuthService::usersEnabled())
 }
 
 // THIS FIRST DRIVERS DO NOT NEED ID CHECK
-$ajxpDriver = AJXP_PluginsService::findPlugin("gui", "ajax");
-//$ajxpDriver->init(ConfService::getRepository());
+//$ajxpDriver = AJXP_PluginsService::findPlugin("gui", "ajax");
 $authDriver = ConfService::getAuthDriverImpl();
 // DRIVERS BELOW NEED IDENTIFICATION CHECK
 if(!AuthService::usersEnabled() || ConfService::getCoreConf("ALLOW_GUEST_BROWSING", "auth") || AuthService::getLoggedUser()!=null){

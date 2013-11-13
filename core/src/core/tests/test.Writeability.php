@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 require_once('../classes/class.AbstractTest.php');
@@ -31,8 +31,9 @@ class Writeability extends AbstractTest
     function Writeability() { parent::AbstractTest("Required writeable folder", "One of the following folder should be writeable and is not : "); }
     function doTest() 
     { 
-    	include(AJXP_CONF_PATH."/bootstrap_plugins.php");
+    	//include(AJXP_CONF_PATH."/bootstrap_plugins.php");
     	$checks = array();
+        /*
     	if(isSet($PLUGINS["CONF_DRIVER"])){
     		$confDriver = $PLUGINS["CONF_DRIVER"];
     		if(isSet($confDriver["OPTIONS"]) && isSet($confDriver["OPTIONS"]["REPOSITORIES_FILEPATH"])){
@@ -52,8 +53,10 @@ class Writeability extends AbstractTest
     		if(isset($PLUGINS["LOG_DRIVER"]["OPTIONS"]) && isSet($PLUGINS["LOG_DRIVER"]["OPTIONS"]["LOG_PATH"])){
     			$checks[] = $PLUGINS["LOG_DRIVER"]["OPTIONS"]["LOG_PATH"];
     		}
-    	}    
+    	}
+        */
     	$checks[] = AJXP_CACHE_DIR;	
+    	$checks[] = AJXP_DATA_PATH;
     	$checked = array();
     	$success = true;
     	foreach ($checks as $check){

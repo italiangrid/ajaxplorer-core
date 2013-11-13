@@ -38,6 +38,10 @@
 				<serverCallback methodName="switchAction"></serverCallback>
 			</processing>
 		</action>
+		
+				
+		
+		
 				<action name="rename">
 			<gui text="6" title="158" src="applix.png" accessKey="rename_access_key" hasAccessKey="true">
 				<context selection="true" dir="" recycle="hidden"
@@ -49,36 +53,50 @@
 			<processing>
 				<clientCallback prepareModal="true"><![CDATA[
 					var callback = function(node, newValue){
+						var user_home=GetCookie("user_home");
+						var pref = GetCookie("home");
 						var filename = node.getPath();
+						var pref_filename= pref+filename+"/"; 
 						var conn = new Connexion();
 						conn.addParameter('get_action', 'rename');
 						conn.addParameter('file', filename);
 						conn.addParameter('filename_new', newValue);
+						if(user_home==pref_filename){
+						conn.addParameter('change_home', 'true');
+						}
 						conn.onComplete = function(transport){
 							ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
 						};
-						conn.sendSync();
+						conn.sendAsync()
+						window.ajaxplorer.fireContextRefresh();
+
 					};
 					if(ajaxplorer.getUserSelection() && ajaxplorer.getUserSelection().getSelectionSource() && ajaxplorer.getUserSelection().getSelectionSource().switchCurrentLabelToEdition) {ajaxplorer.getUserSelection().getSelectionSource().switchCurrentLabelToEdition(callback);}
 				]]></clientCallback>
 				<serverCallback methodName="switchAction"></serverCallback>
 				</processing>
 		</action>
+		
+				
 		        <action name="mkdir">
-            <gui text="154" title="155" src="folder_new.png" accessKey="folder_access_key" hasAccessKey="true">
-                <context selection="false" dir="true" recycle="hidden" actionBar="true" contextMenu="true" infoPanel="false" actionBarGroup="change" inZip="false"></context>
+            <gui text="154" title="155" src="folder_new.png" iconClass="icon-folder-close" accessKey="folder_access_key" hasAccessKey="true">
+                <context selection="false" dir="true" recycle="hidden" actionBar="true" contextMenu="true" infoPanel="false" actionBarGroup="get" inZip="false"></context>
             </gui>
             <rightsContext noUser="true" userLogged="only" read="true" write="true" adminOnly=""></rightsContext>
             <processing>
                 <clientCallback prepareModal="true"><![CDATA[
+                
+                
                     modal.showDialogForm('Create', 'mkdir_form', null, function(){
                         var oForm = $(modal.getForm());
                         var elementToCheck=(oForm['dirname']);
-                        if(ajaxplorer.getContextHolder().fileNameExists($(elementToCheck).getValue()))
-                        {
-                            alert(MessageHash[125]);
-                            return false;
-                        }
+                        
+//                        if(ajaxplorer.getContextHolder().fileNameExists($(elementToCheck).getValue()))
+//                        {
+//                            alert(MessageHash[125]);
+//                            return false;
+//                        }
+
                         ajaxplorer.actionBar.submitForm(oForm);
                         hideLightBox(true);
                         return false;
@@ -120,9 +138,10 @@
 					});
 					]]></clientCallback>
 				<clientForm id="delete_form"><![CDATA[
-				<div id="delete_form" action="delete" box_width="200">
+				<div id="delete_form" action="delete" box_width="300" style="font-size:11.5px;">
 				<span id="delete_message"></span>
-				</div>				]]></clientForm>
+				</div>				
+				]]></clientForm>
 				<serverCallback methodName="switchAction"></serverCallback>
 			</processing>
 		</action>
@@ -209,7 +228,6 @@
 					}.bind(context);
 					modal.showDialogForm('Move/Copy', 'copymove_form', onLoad, onSubmit, onCancel);				
 					]]>		</clientCallback>
-					
 							<clientForm id="copymove_form"><![CDATA[
 					<div id="copymove_form" action="copy" box_width="272">
 						<input type="hidden" name="dest_node" value=""/>
@@ -249,129 +267,126 @@
 
 		<action name="more_info" fileDefault="true">
             <gui text="446" title="442" src="info.png">
-                <context selection="true" dir="false" recycle="hidden"  behaviour="hidden"
+                <context selection="true" dir="true" recycle="hidden"  behaviour="hidden"
                     actionBar="true" contextMenu="true" infoPanel="false"
-                    actionBarGroup="user" inZip="false">
+                    actionBarGroup="change" inZip="false">
                 </context>
-                <selectionContext dir="false" file="true" recycle="false" unique="true" allowedMimes="AJXP_MIMES_EDITABLE" behaviour="hidden"></selectionContext> </gui>
+                <selectionContext dir="true" file="true" recycle="false" unique="true" allowedMimes="AJXP_MIMES_EDITABLE" behaviour="hidden"></selectionContext> </gui>
             <rightsContext noUser="true" userLogged="only" read="true" write="false" adminOnly=""></rightsContext>
-			
 			<processing>
 		<serverCallback methodName="switchAction"></serverCallback>
 				<clientCallback prepareModal="true"><![CDATA[
-
-	function populateFILEINFO(xmlData){
-		var rolesPane = document.getElementById('roles_pane');
-		var guidValue = XPathSelectNodes(xmlData, "tree/FileInfo");
-		var lfnValue = XPathSelectNodes(xmlData, "tree/FileInfo");
-		var replicaValue = XPathSelectNodes(xmlData, "tree/FileInfo/Replica");
-		var ownerValue = XPathSelectNodes(xmlData, "tree/FileInfo/Owner");
-		var groupValue = XPathSelectNodes(xmlData, "tree/FileInfo/Group");
-		var permissionValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions");
-		var permissionUserValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/User");
-		var permissionGroupValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/Group");
-		var permissionMaskValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/Mask");
-		var permissionOtherValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/Other");
-		var lfnSelect = rolesPane.down('div#lfn');
-		var guidSelect = rolesPane.down('div#guid');
-		var replicaSelect = rolesPane.down('div#replica');
-		var ownerSelect = rolesPane.down('div#owner');
-		var groupSelect = rolesPane.down('div#group');
-		var permissionSelect = rolesPane.down('div#permission');
-		var rolesId = $A();
-		lfnValue.each(function(xmlElement){
-		        var id = xmlElement.getAttribute('LFNValue');
-		        var option = new Element('div', {id:id, className:'ajxp_role available_role'}).update(id);
-		        lfnSelect.insert(option);
-		        rolesId.push(id);
-		});
-		guidValue.each(function(xmlElement){
-		        var id = xmlElement.getAttribute('GuidValue');
-		        if(!rolesId.include(id)){
-		        	var option = new Element('div', {id:id, className:'ajxp_role available_role'}).update(id);
-		        	guidSelect.insert(option);
-		        }
-	  	});
-		replicaValue.each(function(xmlElement){
-			var id = xmlElement.getAttribute('Value');
-			if(!rolesId.include(id)){
-			 	var option = new Element('div', {id:id, className:'ajxp_role user_role'}).update(id);			
-				replicaSelect.insert(option);
-			}
-		});
-		ownerValue.each(function(xmlElement){
-		       	var id = xmlElement.getAttribute('Value');
-		        if(!rolesId.include(id)){
-		                var option = new Element('div', {id:id, className:'ajxp_role user_role'}).update(id);
-		                ownerSelect.insert(option);
-		}
-                });
-                groupValue.each(function(xmlElement){
-                        var id = xmlElement.getAttribute('Value');
-                        if(!rolesId.include(id)){
-                        	var option = new Element('div', {id:id, className:'ajxp_role user_role'}).update(id);
-                                groupSelect.insert(option);
-                        }
-                });			
-		permissionUserValue.each(function(xmlElement){
-		        var id = xmlElement.getAttribute('Value');
-		        if(!rolesId.include(id)){
-		        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
-		        	permissionSelect.insert(option_user);
-		        }
-		});
-		permissionGroupValue.each(function(xmlElement){
-		        var id = xmlElement.getAttribute('Value');
-		        if(!rolesId.include(id)){
-		        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
-		        	permissionSelect.insert(option_user);
-		        }
-		});
-		permissionMaskValue.each(function(xmlElement){
-		        var id = xmlElement.getAttribute('Value');
-		        if(!rolesId.include(id)){
-		        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
-		        	permissionSelect.insert(option_user);
-		        }
-		});
-		permissionOtherValue.each(function(xmlElement){
-		        var id = xmlElement.getAttribute('Value');
-		        if(!rolesId.include(id)){
-		        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
-		        	permissionSelect.insert(option_user);
-		        }
-		});
-		
-	}
-		
-	var userSelection = ajaxplorer.getUserSelection();
-	var node = userSelection.getUniqueNode();
-	var meta = node.getMetadata();
-	var fileNames = $A(userSelection.getFileNames());
-	var connexion = new Connexion();
-	connexion.addParameter('get_action', 'more_info');		
-	connexion.addParameter('dir', userSelection.getCurrentRep());
-	connexion.onComplete = function(transport){				   			
-		populateFILEINFO(transport.responseXML);
-		ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-	}
-	fileNames.each(function(filename){
-		connexion.addParameter('file', filename);
-		connexion.sendAsync();
-	});
-
-	var onLoad = function(oForm){	
-		//populateFILEINFO(oForm.responseXML);
-	}	
-		 
-				  
-	modal.showDialogForm('more_info', 'more_info_form', onLoad, function(){
-		var oForm = modal.getForm();
-		ajaxplorer.getUserSelection().updateFormOrUrl(oForm);
-		ajaxplorer.actionBar.submitForm(oForm);
-		hideLightBox(true);
-		return false;
-	});
+				function populateFILEINFO(xmlData){
+					var rolesPane = document.getElementById('roles_pane');
+					var guidValue = XPathSelectNodes(xmlData, "tree/FileInfo");
+					var lfnValue = XPathSelectNodes(xmlData, "tree/FileInfo");
+					var replicaValue = XPathSelectNodes(xmlData, "tree/FileInfo/Replica");
+					var ownerValue = XPathSelectNodes(xmlData, "tree/FileInfo/Owner");
+					var groupValue = XPathSelectNodes(xmlData, "tree/FileInfo/Group");
+					var permissionValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions");
+					var permissionUserValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/User");
+					var permissionGroupValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/Group");
+					var permissionMaskValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/Mask");
+					var permissionOtherValue = XPathSelectNodes(xmlData, "tree/FileInfo/Permissions/Other");
+					var lfnSelect = rolesPane.down('div#lfn');
+					var guidSelect = rolesPane.down('div#guid');
+					var replicaSelect = rolesPane.down('div#replica');
+					var ownerSelect = rolesPane.down('div#owner');
+					var groupSelect = rolesPane.down('div#group');
+					var permissionSelect = rolesPane.down('div#permission');
+					var rolesId = $A();
+					lfnValue.each(function(xmlElement){
+					        var id = xmlElement.getAttribute('LFNValue');
+					        var option = new Element('div', {id:id, className:'ajxp_role available_role'}).update(id);
+					        lfnSelect.insert(option);
+					        rolesId.push(id);
+					});
+					guidValue.each(function(xmlElement){
+					        var id = xmlElement.getAttribute('GuidValue');
+					        if(!rolesId.include(id)){
+					        	var option = new Element('div', {id:id, className:'ajxp_role available_role'}).update(id);
+					        	guidSelect.insert(option);
+					        }
+				  	});
+					replicaValue.each(function(xmlElement){
+						var id = xmlElement.getAttribute('Value');
+						if(!rolesId.include(id)){
+						 	var option = new Element('div', {id:id, className:'ajxp_role user_role'}).update(id);			
+							replicaSelect.insert(option);
+						}
+					});
+					ownerValue.each(function(xmlElement){
+					       	var id = xmlElement.getAttribute('Value');
+					        if(!rolesId.include(id)){
+					                var option = new Element('div', {id:id, className:'ajxp_role user_role'}).update(id);
+					                ownerSelect.insert(option);
+					}
+			                });
+			                groupValue.each(function(xmlElement){
+			                        var id = xmlElement.getAttribute('Value');
+			                        if(!rolesId.include(id)){
+			                        	var option = new Element('div', {id:id, className:'ajxp_role user_role'}).update(id);
+			                                groupSelect.insert(option);
+			                        }
+			                });			
+					permissionUserValue.each(function(xmlElement){
+					        var id = xmlElement.getAttribute('Value');
+					        if(!rolesId.include(id)){
+					        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
+					        	permissionSelect.insert(option_user);
+					        }
+					});
+					permissionGroupValue.each(function(xmlElement){
+					        var id = xmlElement.getAttribute('Value');
+					        if(!rolesId.include(id)){
+					        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
+					        	permissionSelect.insert(option_user);
+					        }
+					});
+					permissionMaskValue.each(function(xmlElement){
+					        var id = xmlElement.getAttribute('Value');
+					        if(!rolesId.include(id)){
+					        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
+					        	permissionSelect.insert(option_user);
+					        }
+					});
+					permissionOtherValue.each(function(xmlElement){
+					        var id = xmlElement.getAttribute('Value');
+					        if(!rolesId.include(id)){
+					        	var option_user = new Element('div', {id:id, className:'ajxp_role permission'}).update(id);
+					        	permissionSelect.insert(option_user);
+					        }
+					});
+				}
+					
+				var userSelection = ajaxplorer.getUserSelection();
+				var node = userSelection.getUniqueNode();
+				var meta = node.getMetadata();
+				var fileNames = $A(userSelection.getFileNames());
+				var connexion = new Connexion();
+				connexion.addParameter('get_action', 'more_info');		
+				connexion.addParameter('dir', userSelection.getCurrentRep());
+				connexion.onComplete = function(transport){				   			
+					populateFILEINFO(transport.responseXML);
+					ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+				}
+				fileNames.each(function(filename){
+					connexion.addParameter('file', filename);
+					connexion.sendAsync();
+				});
+			
+				var onLoad = function(oForm){	
+					//populateFILEINFO(oForm.responseXML);
+				}	
+					 
+							  
+				modal.showDialogForm('more_info', 'more_info_form', onLoad, function(){
+					var oForm = modal.getForm();
+					ajaxplorer.getUserSelection().updateFormOrUrl(oForm);
+					ajaxplorer.actionBar.submitForm(oForm);
+					hideLightBox(true);
+					return false;
+				});
 				]]></clientCallback>
                 <clientForm id="more_info_form"><![CDATA[
 					<div id="more_info_form" action="more_info" box_width="800">
@@ -396,9 +411,8 @@
 </action>
 
 
-
 <action name="upload">
-			<gui text="27" title="27" src="yast_backup.png" accessKey="upload_access_key" hasAccessKey="true">
+			<gui text="27" title="27" src="yast_backup.png" iconClass="icon-upload-alt" accessKey="upload_access_key" hasAccessKey="true">
 				<context selection="false" dir="true" recycle="hidden"
 					actionBar="true" contextMenu="true" infoPanel="false"
 					actionBarGroup="put" inZip="false">
@@ -406,154 +420,144 @@
 			<rightsContext noUser="true" userLogged="only" read="false" write="true" adminOnly=""></rightsContext>
 			<processing>
 				<clientCallback prepareModal="true"><![CDATA[
-				
-				
-				
+				var vos=GetCookie("vo_cookie").split("---");
+				var active_vo=vos[0];
 				var BrowserDetect = {
-	init: function () {
-		this.browser = this.searchString(this.dataBrowser) || "An unknown browser";
-		this.version = this.searchVersion(navigator.userAgent)
-			|| this.searchVersion(navigator.appVersion)
-			|| "an unknown version";
-		this.OS = this.searchString(this.dataOS) || "an unknown OS";
-	},
-	searchString: function (data) {
-		for (var i=0;i<data.length;i++)	{
-			var dataString = data[i].string;
-			var dataProp = data[i].prop;
-			this.versionSearchString = data[i].versionSearch || data[i].identity;
-			if (dataString) {
-				if (dataString.indexOf(data[i].subString) != -1)
-					return data[i].identity;
-			}
-			else if (dataProp)
-				return data[i].identity;
-		}
-	},
-	searchVersion: function (dataString) {
-		var index = dataString.indexOf(this.versionSearchString);
-		if (index == -1) return;
-		return parseFloat(dataString.substring(index+this.versionSearchString.length+1));
-	},
-	dataBrowser: [
-		{
-			string: navigator.userAgent,
-			subString: "Chrome",
-			identity: "Chrome"
-		},
-		{ 	string: navigator.userAgent,
-			subString: "OmniWeb",
-			versionSearch: "OmniWeb/",
-			identity: "OmniWeb"
-		},
-		{
-			string: navigator.vendor,
-			subString: "Apple",
-			identity: "Safari",
-			versionSearch: "Version"
-		},
-		{
-			prop: window.opera,
-			identity: "Opera",
-			versionSearch: "Version"
-		},
-		{
-			string: navigator.vendor,
-			subString: "iCab",
-			identity: "iCab"
-		},
-		{
-			string: navigator.vendor,
-			subString: "KDE",
-			identity: "Konqueror"
-		},
-		{
-			string: navigator.userAgent,
-			subString: "Firefox",
-			identity: "Firefox"
-		},
-		{
-			string: navigator.vendor,
-			subString: "Camino",
-			identity: "Camino"
-		},
-		{		// for newer Netscapes (6+)
-			string: navigator.userAgent,
-			subString: "Netscape",
-			identity: "Netscape"
-		},
-		{
-			string: navigator.userAgent,
-			subString: "MSIE",
-			identity: "Explorer",
-			versionSearch: "MSIE"
-		},
-		{
-			string: navigator.userAgent,
-			subString: "Gecko",
-			identity: "Mozilla",
-			versionSearch: "rv"
-		},
-		{ 		// for older Netscapes (4-)
-			string: navigator.userAgent,
-			subString: "Mozilla",
-			identity: "Netscape",
-			versionSearch: "Mozilla"
-		}
-	],
-	dataOS : [
-		{
-			string: navigator.platform,
-			subString: "Win",
-			identity: "Windows"
-		},
-		{
-			string: navigator.platform,
-			subString: "Mac",
-			identity: "Mac"
-		},
-		{
-			   string: navigator.userAgent,
-			   subString: "iPhone",
-			   identity: "iPhone/iPod"
-	    },
-		{
-			string: navigator.platform,
-			subString: "Linux",
-			identity: "Linux"
-		}
-	]
-
-};
-BrowserDetect.init();
-				
-				
-				
-				var allcookies=listCookies();				
- 				var index0 = allcookies.indexOf("LFR_SESSION_STATE_");
- 				var index = index0+18;
- 				var userID = allcookies.substr(index,5); 				
- 				var pathupload = ajaxplorer.getContextNode().getPath();
- 				if (pathupload!="/"){
- 				pathupload=pathupload+"/";}
- 				var root=GetCookie('home')+pathupload;									
-
-
-
-var $browser=BrowserDetect.browser;
-var $browser_version= BrowserDetect.version;
-
-
-
-//				var isIE = /*@cc_on!@*/false;
-
-				var left = (screen.width/2)-(500);
-				var top = (screen.height/2)-(300);
-				if ($browser=='Explorer' && $browser_version<10 ) {
-					window.open('http://gridlab07.cnaf.infn.it:8090/plupload/examples/jquery/jquery_ui_widget.html?subdir='+userID+'/upload&vo='+GetCookie("active")+'&pwd='+root,'mywindow','left=20,top=20,width=1000,height=600,toolbar=no,scrollbars=yes,location=no,resizable=yes');
-				} else {
-					window.open('http://gridlab07.cnaf.infn.it:8090/jquery/index.php?subdir='+userID+'/upload&vo='+GetCookie("active")+'&pwd='+root,'mywindow','top='+top+',left='+left+',width=1000,height=600,toolbar=no,scrollbars=yes,location=no,resizable=yes');
-				}												
+				init: function () {
+					this.browser = this.searchString(this.dataBrowser) || "An unknown browser";
+					this.version = this.searchVersion(navigator.userAgent)
+						|| this.searchVersion(navigator.appVersion)
+						|| "an unknown version";
+					this.OS = this.searchString(this.dataOS) || "an unknown OS";
+				},
+				searchString: function (data) {
+					for (var i=0;i<data.length;i++)	{
+						var dataString = data[i].string;
+						var dataProp = data[i].prop;
+						this.versionSearchString = data[i].versionSearch || data[i].identity;
+						if (dataString) {
+							if (dataString.indexOf(data[i].subString) != -1)
+								return data[i].identity;
+						}
+						else if (dataProp)
+							return data[i].identity;
+					}
+				},
+				searchVersion: function (dataString) {
+					var index = dataString.indexOf(this.versionSearchString);
+					if (index == -1) return;
+					return parseFloat(dataString.substring(index+this.versionSearchString.length+1));
+				},
+				dataBrowser: [
+					{
+						string: navigator.userAgent,
+						subString: "Chrome",
+						identity: "Chrome"
+					},
+					{ 	string: navigator.userAgent,
+						subString: "OmniWeb",
+						versionSearch: "OmniWeb/",
+						identity: "OmniWeb"
+					},
+					{
+						string: navigator.vendor,
+						subString: "Apple",
+						identity: "Safari",
+						versionSearch: "Version"
+					},
+					{
+						prop: window.opera,
+						identity: "Opera",
+						versionSearch: "Version"
+					},
+					{
+						string: navigator.vendor,
+						subString: "iCab",
+						identity: "iCab"
+					},
+					{
+						string: navigator.vendor,
+						subString: "KDE",
+						identity: "Konqueror"
+					},
+					{
+						string: navigator.userAgent,
+						subString: "Firefox",
+						identity: "Firefox"
+					},
+					{
+						string: navigator.vendor,
+						subString: "Camino",
+						identity: "Camino"
+					},
+					{		// for newer Netscapes (6+)
+						string: navigator.userAgent,
+						subString: "Netscape",
+						identity: "Netscape"
+					},
+					{
+						string: navigator.userAgent,
+						subString: "MSIE",
+						identity: "Explorer",
+						versionSearch: "MSIE"
+					},
+					{
+						string: navigator.userAgent,
+						subString: "Gecko",
+						identity: "Mozilla",
+						versionSearch: "rv"
+					},
+					{ 		// for older Netscapes (4-)
+						string: navigator.userAgent,
+						subString: "Mozilla",
+						identity: "Netscape",
+						versionSearch: "Mozilla"
+					}
+				],
+				dataOS : [
+					{
+						string: navigator.platform,
+						subString: "Win",
+						identity: "Windows"
+					},
+					{
+						string: navigator.platform,
+						subString: "Mac",
+						identity: "Mac"
+					},
+					{
+						   string: navigator.userAgent,
+						   subString: "iPhone",
+						   identity: "iPhone/iPod"
+				    },
+					{
+						string: navigator.platform,
+						subString: "Linux",
+						identity: "Linux"
+					}
+				]
+			
+			};
+			BrowserDetect.init();
+			var allcookies=listCookies();				
+			var index0 = allcookies.indexOf("LFR_SESSION_STATE_");
+			var index = index0+18;
+			var userID = allcookies.substr(index,5); 				
+			var pathupload = ajaxplorer.getContextNode().getPath();
+			if (pathupload!="/"){
+			pathupload=pathupload+"/";}
+			var root=GetCookie('home')+pathupload;									
+			var $browser=BrowserDetect.browser;
+			var $browser_version= BrowserDetect.version;
+			var server_name=location.host;
+//			var isIE = /*@cc_on!@*/false;
+			var left = (screen.width/2)-(500);
+			var top = (screen.height/2)-(300);
+			if ($browser=='Explorer' && $browser_version<10 ) {
+				window.open('https://'+server_name+'/plupload/examples/jquery/jquery_ui_widget.html?subdir='+userID+'/upload&vo='+active_vo+'&pwd='+root,'mywindow','left=20,top=20,width=1000,height=600,toolbar=no,scrollbars=yes,location=no,resizable=yes');
+			} else {
+				window.open('https://'+server_name+'/jquery/index.php?subdir='+userID+'/upload&vo='+active_vo+'&pwd='+root,'mywindow','top='+top+',left='+left+',width=1000,height=600,toolbar=no,scrollbars=yes,location=no,resizable=yes');
+			}												
 				]]></clientCallback>
 				<serverCallback methodName="switchAction"/>
 				</processing>
@@ -564,7 +568,7 @@ var $browser_version= BrowserDetect.version;
                 <gui text="451" title="451" src="sethome.png" hasAccessKey="false">
                     <context selection="true" dir="" recycle="hidden"
                         actionBar="true" contextMenu="true" infoPanel="true"
-                        actionBarGroup="user">
+                        actionBarGroup="change">
                     </context>
                     <selectionContext dir="true" file="false" recycle="false" unique="true">
                     </selectionContext>
@@ -573,113 +577,96 @@ var $browser_version= BrowserDetect.version;
                 <processing>
                 		<serverCallback methodName="switchAction"></serverCallback>
 				<clientCallback prepareModal="true"><![CDATA[
-      		
-		function getHOME(xmlData){		
-		var currentHome = XPathSelectNodes(xmlData, "tree/Home/CurrentHome");
-		currentHome.each(function(xmlElement){
-		    var currentHome_value = xmlElement.getAttribute('Value');
-		    var ele0 = document.getElementById("sethome0");
-		    ele0.innerHTML="Your current home is: "+currentHome_value;
-		    var ele1 = document.getElementById("sethome1");
-		    var ele2 = document.getElementById("sethome2");    			      
-		    
-			if ("/grid/"+GetCookie("active")!= currentHome_value) {
-				document.getElementById("home2_label").innerHTML="Reset your home to: /grid/"+GetCookie("active");
-				ele2.style.display = "block";
-				ele1.style.display = "none";
-			} else {
-				ele1.style.display = "block";
-				ele2.style.display = "none";
-			}
-
-		}); 
-		}
+				var vos=GetCookie("vo_cookie").split("---");
+				var active_vo=vos[0];
+				function getHOME(xmlData){		
+				var currentHome = XPathSelectNodes(xmlData, "tree/Home/CurrentHome");
+				currentHome.each(function(xmlElement){
+				    var currentHome_value = xmlElement.getAttribute('Value');
+				    var ele0 = document.getElementById("sethome0");
+				    ele0.innerHTML="Your current home is: "+currentHome_value;
+				    var ele1 = document.getElementById("sethome1");
+				    var ele2 = document.getElementById("sethome2");    			      
+				    
+					if ("/grid/"+vos[0]!= currentHome_value) {
+						document.getElementById("home2_label").innerHTML="Reset your home to: /grid/"+vos[0];
+						ele2.style.display = "block";
+						ele1.style.display = "none";
+					} else {
+						ele1.style.display = "block";
+						ele2.style.display = "none";
+					}
 		
-		var context = ajaxplorer.actionBar;
-         	
-		var onLoad = function(oForm){
-			
-				var userSelection = ajaxplorer.getUserSelection();
-				var node = userSelection.getUniqueNode();
-				var ele1 = document.getElementById("sethome1");
-				var ele2 = document.getElementById("sethome2");
-				var ele0 = document.getElementById("sethome0");
-				var connexion = new Connexion();
-				connexion.addParameter('get_action', 'sethome');		
-				connexion.addParameter('dir', userSelection.getCurrentRep());
-				connexion.onComplete = function(transport){	
-				   			
+				}); 
+				}
+				
+				var context = ajaxplorer.actionBar;
+				var onLoad = function(oForm){
+					document.cookie = "home_changed="+escape('true')+";secure";
+					var userSelection = ajaxplorer.getUserSelection();
+					var node = userSelection.getUniqueNode();
+					var ele1 = document.getElementById("sethome1");
+					var ele2 = document.getElementById("sethome2");
+					var ele0 = document.getElementById("sethome0");
+					var connexion = new Connexion();
+					connexion.addParameter('get_action', 'sethome');		
+					connexion.addParameter('dir', userSelection.getCurrentRep());
+					connexion.onComplete = function(transport){	
 						getHOME(transport.responseXML);
 						ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-				   }
-
+				    }
+				    var fileNames = $A(userSelection.getFileNames());
+				    fileNames.each(function(filename){
+				   	   connexion.addParameter('file', filename);
+				   	   connexion.sendAsync();
+			   	    });
+			   	}	
+				var onSubmit = function(){
+					var userSelection = ajaxplorer.getUserSelection();
+					var node = userSelection.getUniqueNode();
+					sub_action = "setNewHome";
+					var conn = new Connexion();
+					if (node!=null) {
 						var fileNames = $A(userSelection.getFileNames());
-						fileNames.each(function(filename){
-				   			connexion.addParameter('file', filename);
-				   			connexion.sendAsync();
-				   		});
-		}	
+						var is_file = node.getMetadata().get("is_file");
+						if ($('home2').checked || is_file=="true") {
+							conn.setParameters($H({get_action:"sethome", sub_action:sub_action, path:"/grid/"+vos[0]}));
+						} else {
+							fileNames.each(function(filename){
+								conn.setParameters($H({get_action:"sethome", sub_action:sub_action, path:filename}));
+							});
+						}
+					} else {
+						conn.setParameters($H({get_action:"sethome", sub_action:sub_action, path:"/grid/"+vos[0]}));
+					}
+					conn.sendSync();
+					hideLightBox();
+					var target='/';
+					window.ajaxplorer.goTo(target);	
+					window.ajaxplorer.fireContextRefresh();
+				}.bind(context);
 		
-		
-		var onSubmit = function(){
-			var userSelection = ajaxplorer.getUserSelection();
-			var node = userSelection.getUniqueNode();
-			sub_action = "setNewHome";
-			var conn = new Connexion();
-			if (node!=null) {
-				var fileNames = $A(userSelection.getFileNames());
-				var is_file = node.getMetadata().get("is_file");
-				if ($('home2').checked || is_file=="true") {
-					conn.setParameters($H({get_action:"sethome", sub_action:sub_action, path:"/grid/"+GetCookie("active")}));
-				} else {
-					fileNames.each(function(filename){
-						conn.setParameters($H({get_action:"sethome", sub_action:sub_action, path:filename}));
-					});
-				}
-			} else {
-				conn.setParameters($H({get_action:"sethome", sub_action:sub_action, path:"/grid/"+GetCookie("active")}));
-			}
-			conn.sendSync();
-			hideLightBox();
-			ajaxplorer.fireGoHome();
-		}.bind(context);
-
-		var onCancel = function(){
-				hideLightBox();
-		}.bind(context);
-	
-	
-	modal.showDialogForm('sethome', 'sethome_config_box', onLoad, onSubmit, onCancel);
-	
-	
-				]]>
+				var onCancel = function(){
+						delete_cookie('home_changed');
+						hideLightBox();
+				}.bind(context);						
+				modal.showDialogForm('sethome', 'sethome_config_box', onLoad, onSubmit, onCancel);			
+						]]>
                     </clientCallback>
                     <clientForm id="sethome_config_box"><![CDATA[
 
-	               <div id="sethome_config_box" title="AJXP_MESSAGE[293]"  box_width="600" action="sharewith">
+	               <div id="sethome_config_box" title="AJXP_MESSAGE[293]"  box_width="600" action="sharewith" style="font-size:11.5px;">
 						<fieldset id="share_optional_fields">							
-
-						<div id="sethome0">	
-						</div>
-
-	
-						<div id="sethome1" style="display:none;">		
-						Set the folder selected as your home	
-						</div>							
-							
-						<div id="sethome2" style="display:none;">
-
-						<form></br>
-						<input type="radio" name="home" id="home1" style="margin-top:7px;" value="allVO" /><span id="home1_label">Set selected folder as your home</span><br />
-						<input type="radio" name="home" id="home2" value="someUsers" /><span id="home2_label"></span>
-						</form>
-
-						</div>	
-											
-						
+							<div id="sethome0"></div>
+							<div id="sethome1" style="display:none;">Set the folder selected as your home </div>							
+							<div id="sethome2" style="display:none;">
+								<form></br>
+									<input type="radio" name="home" id="home1" style="margin-top:7px; margin-right:5px;" value="allVO"  checked/><span id="home1_label">Set selected folder as your home</span><br /><br />
+									<input type="radio" name="home" id="home2" style="margin-right:5px;"value="someUsers" /><span id="home2_label"></span>
+								</form>
+							</div>	
 						</fieldset>
 					</div>
-							
 				]]></clientForm>
                     </processing>
            </action>
@@ -885,77 +872,78 @@ var $browser_version= BrowserDetect.version;
 		
 				}
 				
-	var onLoad = function(oForm){
+		var onLoad = function(oForm){
 			
-					var userSelection = ajaxplorer.getUserSelection();
-					var node = userSelection.getUniqueNode();
-					var meta = node.getMetadata();
-				   var fileNames = $A(userSelection.getFileNames());
-				   var connexion = new Connexion();
-				   connexion.addParameter('get_action', 'sharewith');		
-				   connexion.addParameter('dir', userSelection.getCurrentRep());
-				   connexion.onComplete = function(transport){	
-				   			
-						populateUSERS(transport.responseXML);
-						ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-				   }
-				   fileNames.each(function(filename){
-				   		connexion.addParameter('file', filename);
-				   		connexion.sendAsync();
-				   });
-		//populateUSERS(oForm.responseXML);
-	}					
-        
-    var context = ajaxplorer.actionBar;
-    var onSubmit = function(){
-	var callback = function(node, newValue){
-		var filename = node.getPath();
-		var conn = new Connexion();
-		conn.addParameter('get_action', 'load_shared_element_data');
-		conn.addParameter('file', filename);
-		conn.addParameter('filename_new', newValue);
-		conn.onComplete = function(transport){
+		var userSelection = ajaxplorer.getUserSelection();
+		var node = userSelection.getUniqueNode();
+		var meta = node.getMetadata();
+		var fileNames = $A(userSelection.getFileNames());
+		var connexion = new Connexion();
+		connexion.addParameter('get_action', 'sharewith');		
+		connexion.addParameter('dir', userSelection.getCurrentRep());
+		connexion.onComplete = function(transport){	
+					
+			populateUSERS(transport.responseXML);
 			ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-		};
-		conn.sendAsync();
-	};
-	hideLightBox();
-	}.bind(context);
-				
-    modal.showDialogForm('sharewith', 'edit_config_box', onLoad, function(){hideLightBox();}, null, true);
-
+		}
+		fileNames.each(function(filename){
+				connexion.addParameter('file', filename);
+				connexion.sendAsync();
+		});
+		//populateUSERS(oForm.responseXML);
+		}					
+			        
+		    var context = ajaxplorer.actionBar;
+		    var onSubmit = function(){
+			var callback = function(node, newValue){
+				var filename = node.getPath();
+				var conn = new Connexion();
+				conn.addParameter('get_action', 'load_shared_element_data');
+				conn.addParameter('file', filename);
+				conn.addParameter('filename_new', newValue);
+				conn.onComplete = function(transport){
+					ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+				};
+				conn.sendAsync();
+			};
+			hideLightBox();
+			}.bind(context);
+						
+		    modal.showDialogForm('sharewith', 'edit_config_box', onLoad, function(){hideLightBox();}, null, true);
+			
                 ]]>
                 </clientCallback>
                 <clientForm id="edit_config_box"><![CDATA[
                 
 				<div id="edit_config_box" title="AJXP_MESSAGE[293]"  box_width="600" box_eight="650" action="sharewith">
 					<fieldset id="share_optional_fields">														
-						<div id="Accordion2Content" class="accordion_content">
+						<div id="Accordion2Content" class="accordion_content" style="font-size:11.5px;">
 							<form ajxp_message_id="ajxp_conf.130">AJXP_MESSAGE[ajxp_conf.130]</br>
-							<input type="radio" name="VO-share" id="share1" style="margin-top:7px;" value="allVO" /> all VO members<br />
-							<input type="radio" name="VO-share" id="share2" value="someUsers" /> only some Portal Users<br />
-							<input type="radio" name="VO-share" id="share3" value="noBody" /> no Portal User<br />
+							<input type="radio" name="VO-share" id="share1" style="margin-top:7px;" value="allVO" /> all VO members<br /><br />
+							<input type="radio" name="VO-share" id="share2" value="someUsers" /> only some Portal Users<br /><br />
+							<input type="radio" name="VO-share" id="share3" value="noBody" /> no Portal User<br /><br />
 							</form>
 						</div>						
 						<div id="Accordion1Content" class="accordion_content" style="display:none;">									
 							<div class="dialogLegend" style="margin-bottom:10px;" ajxp_message_id="ajxp_conf.126">AJXP_MESSAGE[ajxp_conf.126]</div>
-						<div>
-						<div style="width:44%;float:left;"><span ajxp_message_id="ajxp_conf.124">AJXP_MESSAGE[ajxp_conf.124]</span> : <br><div id="available_roles"></div></div>
-						<div style="width:10%;float:left;text-align:center;vertical-align:middle;"><br>&gt;&gt;<br>&lt;&lt;</div>
-						<div style="width:44%;float:right;"><span ajxp_message_id="ajxp_conf.125">AJXP_MESSAGE[ajxp_conf.125]</span> : <br><div id="user_roles"></div>
-						</div>			
-						</div>													
+							<div>
+								<div style="width:44%;float:left;"><span ajxp_message_id="ajxp_conf.124">AJXP_MESSAGE[ajxp_conf.124]</span> : <br><div id="available_roles"></div></div>
+								<div style="width:10%;float:left;text-align:center;vertical-align:middle;"><br>&gt;&gt;<br>&lt;&lt;</div>
+								<div style="width:44%;float:right;"><span ajxp_message_id="ajxp_conf.125">AJXP_MESSAGE[ajxp_conf.125]</span> : <br><div id="user_roles"></div>
+								</div>			
+							</div>													
 						</div>
 					</fieldset>						
-
 				</div>
 																				
 			]]></clientForm>
                 </processing>
         </action>
+		
+		
 			
 	    <action name="replicate">
-                <gui text="445" title="448" src="editcopy.png" hasAccessKey="false">
+                <gui text="445" title="448" src="editcopy.png" iconClass="icon-copy" hasAccessKey="false">
                     <context selection="true" dir="" recycle="hidden"
                         actionBar="true" contextMenu="true" infoPanel="true"
                         actionBarGroup="change">
@@ -967,327 +955,466 @@ var $browser_version= BrowserDetect.version;
 				<clientCallback prepareModal="true"><![CDATA[
 		
 	
-	
 		function loader(load){
-			
-		var ele = document.getElementById("loading");
-	
-	if(load==false) {
-    		ele.style.display = "none";
-  	}
-	else {
-		ele.style.display = "block";
+			var ele = document.getElementById("loading");
+			if(load==false) {
+		    	ele.style.display = "none";
+		  	} else {
+		  		ele.style.display = "block";
 			}
-} 
+		} 
 		
 		function parseXmlMessage(xmlResponse){		
-		if(xmlResponse == null || xmlResponse.documentElement == null) return;
-		var childs = xmlResponse.documentElement.childNodes;	
-		var repList = false;
-
-		for(var i=0; i<childs.length;i++)
-		{
-            if(childs[i].nodeName == "update_checkboxes")
+			if(xmlResponse == null || xmlResponse.documentElement == null) return;
+			var childs = xmlResponse.documentElement.childNodes;	
+			var repList = false;
+			for(var i=0; i<childs.length;i++)
 			{
-				var userId = childs[i].getAttribute('user_id');
-				var repositoryId = childs[i].getAttribute('repository_id');
-				var read = childs[i].getAttribute('read');
-				var write = childs[i].getAttribute('write');
-				if(read != 'old') $('chck_'+repositoryId+'_read').checked = (read=='1'?true:false);
-				$('chck_'+repositoryId+'_read').disabled = false;
-				if(write != 'old') $('chck_'+repositoryId+'_write').checked = (write=='1'?true:false);
-				$('chck_'+repositoryId+'_write').disabled = false;
+	            if(childs[i].nodeName == "update_checkboxes")
+				{
+					var userId = childs[i].getAttribute('user_id');
+					var repositoryId = childs[i].getAttribute('repository_id');
+					var read = childs[i].getAttribute('read');
+					var write = childs[i].getAttribute('write');
+					if(read != 'old') $('chck_'+repositoryId+'_read').checked = (read=='1'?true:false);
+					$('chck_'+repositoryId+'_read').disabled = false;
+					if(write != 'old') $('chck_'+repositoryId+'_write').checked = (write=='1'?true:false);
+					$('chck_'+repositoryId+'_write').disabled = false;
+				}
+				else if(childs[i].nodeName == "repository")
+				{
+					if(!this.repositories || !repList) this.repositories = new Hash();
+					repList = true;
+					this.repositories.set(childs[i].getAttribute('index'), childs[i]);
+				}
 			}
-			else if(childs[i].nodeName == "repository")
-			{
-				if(!this.repositories || !repList) this.repositories = new Hash();
-				repList = true;
-				this.repositories.set(childs[i].getAttribute('index'), childs[i]);
-			}
-		}
-        ajaxplorer.actionBar.parseXmlMessage(xmlResponse);
-        if(xmlResponse.documentElement){
-            if(XPathSelectSingleNode(xmlResponse.documentElement, 'message[@type="ERROR"]') != null){
-                return false;
-            }
-        }
-        return true;
-	}
-
+	        ajaxplorer.actionBar.parseXmlMessage(xmlResponse);
+	        if(xmlResponse.documentElement){
+	            if(XPathSelectSingleNode(xmlResponse.documentElement, 'message[@type="ERROR"]') != null){
+	                return false;
+	            }
+	        }
+	        return true;
+	   }
 	
-	function populateUSERS(xmlData){
-		var userSelection = ajaxplorer.getUserSelection();
-		var node = userSelection.getUniqueNode();
-		var fileNames = $A(userSelection.getFileNames());
-		
-		var rolesPane = document.getElementById('roles_pane');
-		var availableRoles = XPathSelectNodes(xmlData, "/tree/SEList/SEAvail");
-		var userRoles = XPathSelectNodes(xmlData, "/tree/SEList/SEUsed");
-		var availSelect = rolesPane.down('div#available_roles');
-		var userSelect = rolesPane.down('div#user_roles');
-		var rolesId = $A();
-		userRoles.each(function(xmlElement){
-	
-			var site_host = xmlElement.getAttribute('Site')+" - "+xmlElement.getAttribute('Hostname');	
-			var id = xmlElement.getAttribute('Hostname');
-			var file = xmlElement.getAttribute('filename');
-			var option = new Element('div', {id:id, className:'ajxp_role used_se'}).update(site_host);			
-			userSelect.insert(option);
-			rolesId.push(id);
-		});
-		availableRoles.each(function(xmlElement){
+	   function populateUSERS(xmlData){
+			var userSelection = ajaxplorer.getUserSelection();
+			var node = userSelection.getUniqueNode();
+			var fileNames = $A(userSelection.getFileNames());
+			var fileSize = ajaxplorer.getUserSelection().getFileSumSizes();
+			var rolesPane = document.getElementById('roles_pane');
+			var availableRoles = XPathSelectNodes(xmlData, "/tree/SEList/SEAvail");
+			var userRoles = XPathSelectNodes(xmlData, "/tree/SEList/SEUsed");
+			var availSelect = rolesPane.down('div#available_roles');
+			var userSelect = rolesPane.down('div#user_roles');
+			var rolesId = $A();
+			var not_fotted='false';
+			userRoles.each(function(xmlElement){
+				if (xmlElement.getAttribute('Site')!='***SE not available at moment***') {
+					not_fotted='true';
+				}
+				var site_host = xmlElement.getAttribute('Site')+" - "+xmlElement.getAttribute('Hostname');	
+				var id = xmlElement.getAttribute('Hostname');
+				var file = xmlElement.getAttribute('filename');
+				var option = new Element('div', {id:id, className:'ajxp_role used_se'}).update(site_host);			
+				userSelect.insert(option);
+				rolesId.push(id);
+			});
+			availableRoles.each(function(xmlElement){
+				var site_host = xmlElement.getAttribute('Site')+" - "+xmlElement.getAttribute('Hostname');
+				var id = xmlElement.getAttribute('Hostname');
+				var file = xmlElement.getAttribute('filename');
+				if(!rolesId.include(id)){
+					var option = new Element('div', {id:id, className:'ajxp_role available_se'}).update(site_host);
+					availSelect.insert(option);
+				}
+			});	
+			this.draggables = $A();
+			rolesPane.select("div.ajxp_role").each(function(item){
+				var container = item.parentNode;
+				if (not_fotted=='true') {
+					this.draggables.push(new Draggable(item, {
+						revert:true, 
+						ghosting:false, 
+						onStart:function(){
+							container.parentNode.insert(item);
+						},
+						onEnd : function(){
+							if(item.ajxp_dropped) return;
+							container.insert(item);
+						},
+						reverteffect:function(element){element.setStyle({top:0,left:0});}
+					}));
+				}
+			}.bind(this));
+			if (not_fotted=='false') {
+				var ele3 = document.getElementById("subtitlePopup");
+			    ele3.innerHTML = "<b>ATTENTION: none of the source SEs is available for replica</b>";
+			}			
+			var dropFunc = function(dragged, dropped, event){
+				dragged.ajxp_dropped = true;
+				dropped.insert(dragged);
+				dragged.setStyle({top:0,left:0});
+				var action = "edit";
+				var sub_action;
+				if(dragged.hasClassName('used_se')){
+					dragged.removeClassName('used_se');
+					dragged.addClassName('available_se');
+					sub_action = "delReplica";
+					
+				} else if (!(dragged.hasClassName('used_se')) && fileSize>104857600) {
+					dragged.removeClassName('available_se');
+					dragged.addClassName('used_se');				
+					sub_action = "doReplicaRemote";
+					modal.showDialogForm('replicate', 'replica_big', onLoad, function(){hideLightBox();}, null, true);			
 
-
-			var site_host = xmlElement.getAttribute('Site')+" - "+xmlElement.getAttribute('Hostname');
-			var id = xmlElement.getAttribute('Hostname');
-			var file = xmlElement.getAttribute('filename');
-			if(!rolesId.include(id)){
-				var option = new Element('div', {id:id, className:'ajxp_role available_se'}).update(site_host);
-				availSelect.insert(option);
-			}
-		});	
-			
-		this.draggables = $A();
-		rolesPane.select("div.ajxp_role").each(function(item){
-			var container = item.parentNode;
-			this.draggables.push(new Draggable(item, {
-				revert:true, 
-				ghosting:false, 
-				onStart:function(){
-					container.parentNode.insert(item);
-				},
-				onEnd : function(){
-					if(item.ajxp_dropped) return;
-					container.insert(item);
-				},
-				reverteffect:function(element){element.setStyle({top:0,left:0});}
-			}));
-		}.bind(this));
-		var dropFunc = function(dragged, dropped, event){
-			dragged.ajxp_dropped = true;
-			dropped.insert(dragged);
-			dragged.setStyle({top:0,left:0});
-			var action = "edit";
-			var sub_action;
-			if(dragged.hasClassName('used_se')){
-				dragged.removeClassName('used_se');
-				dragged.addClassName('available_se');
-				sub_action = "delReplica";
-			}else{
-				dragged.removeClassName('available_se');
-				dragged.addClassName('used_se');				
-				sub_action = "doReplica";
-				
-				load=true;
-				loader(load);
-			}
-
+				} else if (!(dragged.hasClassName('used_se')) && fileSize<=104857600) {
+					dragged.removeClassName('available_se');
+					dragged.addClassName('used_se');				
+					sub_action = "doReplica";
+					load=true;
+					loader(load);
+				}
 				var conn = new Connexion();
 				fileNames.each(function(filename){
-				conn.setParameters($H({get_action:"replicate", sub_action:sub_action, hostName:dragged.id, fileName:filename}
+					conn.setParameters($H({get_action:"replicate", sub_action:sub_action, hostName:dragged.id, fileName:filename}));
+				});
 
-				));
-		});
-
-		conn.onComplete = function(transport){
-		load=false;
-		loader(load);
-		modal.showDialogForm('replicate', 'replica_box', onLoad, function(){hideLightBox();}, null, true);
-		}.bind(this);
-
-			conn.sendSync();			
-		}.bind(this);
-		Droppables.add(availSelect, {accept:'used_se', onDrop:dropFunc, hoverclass:'roles_hover'});
-		Droppables.add(userSelect, {accept:'available_se', onDrop:dropFunc, hoverclass:'roles_hover'});
-		modal.setCloseAction(function(){
-			Droppables.remove(availSelect);
-			Droppables.remove(userSelect);
-			this.draggables.invoke('destroy');
-		}.bind(this));
-		
+				if(sub_action != "doReplicaRemote"){
+					conn.onComplete = function(transport){
+						load=false;
+						loader(load);
+						modal.showDialogForm('replicate', 'replica_box', onLoad, function(){hideLightBox();}, null, true);
+					}.bind(this);
 				}
+				conn.sendSync();			
+			}.bind(this);
+			Droppables.add(availSelect, {accept:'used_se', onDrop:dropFunc, hoverclass:'roles_hover'});
+			Droppables.add(userSelect, {accept:'available_se', onDrop:dropFunc, hoverclass:'roles_hover'});
+			modal.setCloseAction(function(){
+				Droppables.remove(availSelect);
+				Droppables.remove(userSelect);
+				this.draggables.invoke('destroy');
+			}.bind(this));		
+		}
 			
-	var onLoad = function(oForm){
-	var load=false;	
-	loader(load);
-
-					var userSelection = ajaxplorer.getUserSelection();
-					var node = userSelection.getUniqueNode();
-					var meta = node.getMetadata();
-				   var fileNames = $A(userSelection.getFileNames());
-				   var connexion = new Connexion();
-				   connexion.addParameter('get_action', 'replicate');		
-				   connexion.addParameter('dir', userSelection.getCurrentRep());
-				   connexion.onComplete = function(transport){	
-				   			
-						populateUSERS(transport.responseXML);
-						ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-				   }
-				   fileNames.each(function(filename){
-				   		connexion.addParameter('file', filename);
-				   		connexion.sendAsync();
-				   });
-
-		//populateUSERS(oForm.responseXML);
-		}	
+		var onLoad = function(oForm){
+			var load=false;	
+			loader(load);
+			var userSelection = ajaxplorer.getUserSelection();
+			var node = userSelection.getUniqueNode();
+			var meta = node.getMetadata();
+			var fileNames = $A(userSelection.getFileNames());
+			var connexion = new Connexion();
+			connexion.addParameter('get_action', 'replicate');		
+			connexion.addParameter('dir', userSelection.getCurrentRep());
+			connexion.onComplete = function(transport){							
+				populateUSERS(transport.responseXML);
+				ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+			}
+			fileNames.each(function(filename){
+					connexion.addParameter('file', filename);
+					connexion.sendAsync();
+			});
+	
+			//populateUSERS(oForm.responseXML);
+		}
+			
         var context = ajaxplorer.actionBar;
         var onSubmit = function(){
-        
-					var callback = function(node, newValue){
-						var filename = node.getPath();
-						var conn = new Connexion();
-						conn.addParameter('get_action', 'load_shared_element_data');
-						conn.addParameter('file', filename);
-						conn.addParameter('filename_new', newValue);
-						conn.onComplete = function(transport){
-							ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-						};
-						conn.sendAsync();
-					};
-					hideLightBox();
-					}.bind(context);
+			var callback = function(node, newValue){
+				var filename = node.getPath();
+				var conn = new Connexion();
+				conn.addParameter('get_action', 'load_shared_element_data');
+				conn.addParameter('file', filename);
+				conn.addParameter('filename_new', newValue);
+				conn.onComplete = function(transport){
+					ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+				};
+				conn.sendAsync();
+			};
+			hideLightBox();
+		}.bind(context);
       						
         modal.showDialogForm('replicate', 'replica_box', onLoad, function(){hideLightBox();}, null, true);
         
                     ]]>
                     </clientCallback>
                     <clientForm id="replica_box"><![CDATA[
-					<div id="replica_box" title="AJXP_MESSAGE[293]"  box_width="800" action="replicate">
+					<div id="replica_box" title="AJXP_MESSAGE[293]"  box_width="800" action="replicate" style="display:block;">
 						<fieldsetid="share_optional_fields">							
 							<div id="user_acl">
 								<div id="roles_pane">									
-									<div class="dialogLegend" style="margin-bottom:10px;" ajxp_message_id="ajxp_conf.123">AJXP_MESSAGE[ajxp_conf.123]</div>
+									<div id="subtitlePopup" class="dialogLegend" style="margin-bottom:10px;" ajxp_message_id="ajxp_conf.123">AJXP_MESSAGE[ajxp_conf.123]</div>
 									<div>
 										<div style="width:44%;float:left;"><span ajxp_message_id="ajxp_conf.121">AJXP_MESSAGE[ajxp_conf.121]</span> : <br><div id="available_roles" style="height:300px;"></div></div>
 										<div style="width:10%;float:left;text-align:center;vertical-align:middle;"><br>&gt;&gt;<br>&lt;&lt;
-										<div id="loading"></div>
+											<div id="loading"></div>
 										</div>
 										<div style="width:44%;float:right;"><span ajxp_message_id="ajxp_conf.122">AJXP_MESSAGE[ajxp_conf.122]</span> : <br><div id="user_roles" style="height:300px;"></div></div>
 									</div>
-									
 								</div>														
 							</div>
 						</fieldset>													
-					</div>	
-										
-																								
+					</div>
+					<div id="replica_big" title="AJXP_MESSAGE[293]"  box_width="400" action="replicate" style="display:block;">
+					<p>Being the file size to replicate more than 100 MB you will be advised by mail at the replication end.</p><p>In the meanwhile you can use all the portal services.<p>
+					</div>
+					<span> 																							
 				]]></clientForm>
                     </processing>
             </action>
 
+
+
+
 	<action name="download" fileDefault="false">
-		<gui text="88" title="88" src="download_manager.png" accessKey="download_access_key" hasAccessKey="true">
-			<context selection="true" dir="" recycle="false"
-				actionBar="true" contextMenu="true" infoPanel="true"
-				actionBarGroup="put">
-			</context>
-			<selectionContext dir="false" file="true" recycle="false" unique="false"></selectionContext></gui>
-		<rightsContext noUser="true" userLogged="only" read="true" write="false" adminOnly=""></rightsContext>
-		<processing>
-			<clientCallback prepareModal="true"><![CDATA[	
-		var onLoad = function(oForm){			
-			$formid='download_form';
+		<gui text="88" title="88" src="download_manager.png" iconClass="icon-download-alt" accessKey="download_access_key" hasAccessKey="true">
+			<context selection="true" dir="" recycle="hidden"
+                        actionBar="true" contextMenu="true" infoPanel="true"
+                        actionBarGroup="put">
+                    </context>
+                    <selectionContext dir="true" file="true" recycle="false" unique="false"></selectionContext></gui>
+                <rightsContext noUser="true" userLogged="only" read="true" write="false" adminOnly=""></rightsContext>
+                <processing>
+                		<serverCallback methodName="switchAction"></serverCallback>
+				<clientCallback prepareModal="true"><![CDATA[
 			
-			var checkFunc1 = function(){
-				var ele2 = document.getElementById("small");
-				var ele3 = document.getElementById("big");
-				var ele4 = document.getElementById("small-4");
-				ele2.style.display = "block";
-				ele3.style.display = "none";
-				ele4.style.display = "none";
-				$formid='download_form';
-			}.bind(this);
-	
-			var checkFunc2 = function(){
-				var ele2 = document.getElementById("small");
-				var ele3 = document.getElementById("big");
-				var ele4 = document.getElementById("small-4");
-				ele2.style.display = "none";
-				ele3.style.display = "block";
-				ele4.style.display = "none";	
-				$formid='download_big_form';
-			}.bind(this);
-	
-			var checkFunc3 = function(){
-				var ele2 = document.getElementById("small");
-				var ele3 = document.getElementById("big");
-				var ele4 = document.getElementById("small-4");
-				ele2.style.display = "none";
-				ele3.style.display = "none";
-				ele4.style.display = "block";	
-				$formid='download_cloud_form';
-			}.bind(this);
-	
-			Event.observe('pc', 'click', checkFunc1);		
-			Event.observe('remote', 'click', checkFunc2);
-			Event.observe('clouds', 'click', checkFunc3);
-			
-			var fileNames = ajaxplorer.getUserSelection().getFileNames();
-			var fileSizes = ajaxplorer.getUserSelection().getFileSumSizes();
-						
-			if(fileSizes>5368709120){
-				$formid='download_big_form';
-				var ele1 = document.getElementById("big");
-				ele1.style.display = "block";					
-			}					
-			else {
-				var ele1 = document.getElementById("choose");
-				ele1.style.display = "block";
+			function calculate_dimension(total_files_size){
+				var dimension;
+				if (total_files_size<=1024) {
+					dimension="bytes";
+				} else if (total_files_size<=1024*1024) {
+					total_files_size=total_files_size/1024;
+					dimension="KB";
+				} else if (total_files_size<=1024*1024*1024) {
+					total_files_size=total_files_size/(1024*1024);
+					dimension="MB";
+				} else {
+					total_files_size=total_files_size/(1024*1024*1024);
+					dimension="GB";
+				}
+				return [total_files_size, dimension];
 			}
-	     		var message = MessageHash[452];
-	    		$(oForm).getElementsBySelector('span[id="download_message"]')[0].innerHTML = message;
+		
+			function write_entry_message(total_files_num, total_files_size) {
+				var max_files_num = 1000000;
+				var max_files_size = 100000000000000000000;
+				var dimensions = calculate_dimension(total_files_size);
+				var max_dimensions = calculate_dimension(max_files_size);
+				var ele0 = document.getElementById("info");
+				var entry_message = "";
+				var over_threshold = false;
+				if (total_files_num > max_files_num) {
+					document.getElementsByClassName('dialogFocus')[0].style.display = "none";
+					entry_message = "You selected <span style='color:red; font-weight:bold;'>"+total_files_num+" files</span> that exceeds the maximum number of <span style='color:red; font-weight:bold;'>"+max_files_num+" files</span> allowed.<br /><br />Please select a smaller number of files.";
+					over_threshold = true;
+				} else if (total_files_size > max_files_size) {
+					document.getElementsByClassName('dialogFocus')[0].style.display = "none";
+					entry_message = "You selected files with a total size of <span style='color:red; font-weight:bold;'>"+dimensions[0].toFixed(2)+" "+dimensions[1]+"</span> that exceeds the maximum size of <span style='color:red; font-weight:bold;'>"+max_dimensions[0].toFixed(2)+" "+max_dimensions[1]+"</span> allowed.<br /><br />Please select files with a smaller total size.";
+					over_threshold = true;
+				} else {
+					entry_message = "You are going to download <span style='color:red; font-weight:bold;'>"+total_files_num+" files</span> for a total size of <span style='color:red; font-weight:bold;'>"+dimensions[0].toFixed(2)+" "+dimensions[1]+"</span>";
+				}
+				ele0.innerHTML = entry_message;
+				return over_threshold;
+			}
+
+			function calculate_totals(xmlData, num_files, fileSizes){
+				var files_in_dir = parseInt(XPathSelectNodes(xmlData, "/tree/DirInfo")[0].getAttribute('Files_tot'));
+				size_dir = parseInt(XPathSelectNodes(xmlData, "/tree/DirInfo")[0].getAttribute('Size'));
+				var off_set=XPathSelectNodes(xmlData, "/tree/DirInfo/Offset");
+				var n=0;
+				off_set.each(function(xmlElement){
+				 offsets[n]=num_files+parseInt(xmlElement.getAttribute('offset'));
+				 n++;
+				});
+				//size_dir = parseInt(XPathSelectNodes(xmlData, "/tree/DirInfo")[0].getAttribute('Size'));
+				total_files_size = fileSizes + size_dir;
+				total_files_num = files_in_dir + num_files;
+				var over_threshold = write_entry_message(total_files_num, total_files_size);
+				return over_threshold;
+			}
+			
+			function connexion_remote(random, total_files_num) {
+				var connexion = new Connexion();
+				connexion.setParameters($H({get_action:"download", sub_action:"check_conn"}));
+	 			connexion.addParameter('get_action', 'download');
+	 			connexion.addParameter('keep', 'false');
+	 			connexion.addParameter('big', 'true');
+	 			var protocol=document.getElementById("download1").value;
+	 			var server=document.getElementById("download2").value;
+				var username=document.getElementById("download3").value;
+				var password=document.getElementById("download4").value;
+				var folder=document.getElementById("download5").value;
+				var port=document.getElementById("download6").value;
+				connexion.addParameter('username', username);
+	 			connexion.addParameter('server', server);
+	 			connexion.addParameter('password', password);	
+	 			connexion.addParameter('random', random);
+	 			connexion.addParameter('protocol', protocol);
+	 			connexion.addParameter('folder', folder);
+	 			connexion.addParameter('cloud', 'false');
+	 			connexion.addParameter('PC', 'false');
+	 			connexion.addParameter('port', port);
+	 			connexion.addParameter('files_num', total_files_num);
+	 			connexion.addParameter('count_files_in_dir', false);
+	 			return connexion;
+			}
+			
+			var total_files_size=0;
+			var total_files_num=0;
+			var num_items=0;
+			var dirNames= new Array();
+			var offsets= new Array();
+			var num_files = 0;
+			var num_dirs = 0;
+			var size_dir = 0;
+			var proxy = "true";
+			var is_over_threshold = false;
+			var ok=true;
+			var onLoad = function(oForm){	
+				$formid ='download_form';
+				var fileSizes = ajaxplorer.getUserSelection().getFileSumSizes();
+				var checkFunc1 = function(){
+					var ele2 = document.getElementById("small");
+					var ele3 = document.getElementById("big");
+					var ele4 = document.getElementById("small-4");
+					ele2.style.display = "block";
+					ele3.style.display = "none";
+					ele4.style.display = "none";
+					$formid='download_form';
+				}.bind(this);
+				var checkFunc2 = function(){
+					var ele2 = document.getElementById("small");
+					var ele3 = document.getElementById("big");
+					var ele4 = document.getElementById("small-4");
+					ele2.style.display = "none";
+					ele3.style.display = "block";
+					ele4.style.display = "none";	
+					$formid='download_big_form';
+					document.getElementById('generic_dialog_box').style.top = "90px";
+				}.bind(this);
+				var checkFunc3 = function(){
+					var ele2 = document.getElementById("small");
+					var ele3 = document.getElementById("big");
+					var ele4 = document.getElementById("small-4");
+					ele2.style.display = "none";
+					ele3.style.display = "none";
+					ele4.style.display = "block";	
+					$formid='download_cloud_form';
+				}.bind(this);
+				Event.observe('pc', 'click', checkFunc1);		
+				Event.observe('remote', 'click', checkFunc2);
+				Event.observe('clouds', 'click', checkFunc3);
+				var fileNames = ajaxplorer.getUserSelection().getFileNames();
+				
+				if(ajaxplorer.getUserSelection().hasDir()){
+					var connexion = new Connexion();
+					var selectedItems = ajaxplorer.getUserSelection().getSelectedNodes();
+					var num_dir = 0;
+					selectedItems.each(function(item){
+						if(!item.isLeaf()){
+							var path = item.getPath();
+							connexion.addParameter('get_action', 'download');
+							connexion.addParameter('dir_'+num_dir, path);
+							connexion.addParameter('count_files_in_dir', true);
+							dirNames.push(path);
+							num_dir++;
+						} else {
+							num_files++;
+						}
+					});
+					num_dirs = dirNames.length;
+					connexion.onComplete = function(transport){							
+						is_over_threshold = calculate_totals(transport.responseXML, num_files, fileSizes);
+						ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+					};
+					connexion.sendSync();
+					if (is_over_threshold) {
+//						connexion.sendSync();
+						ok=false;
+					}
+				} else {
+					num_files=fileNames.length;
+					total_files_num=num_files;
+					is_over_threshold = write_entry_message(total_files_num, fileSizes);
+					if (is_over_threshold) {
+//						connexion.sendSync();
+						ok=false;
+					}
+				}
+			
+				if(total_files_size>20 || fileSizes>20){
+					var connexion = new Connexion();
+					connexion.addParameter('get_action', 'download');
+					connexion.addParameter('check_proxy', 'true');
+					connexion.addParameter('total_files_size', total_files_size);
+					connexion.addParameter('fileSizes', fileSizes);
+					connexion.onComplete = function(transport){	
+					var idVO="null";
+					idVO=parseInt(XPathSelectNodes(transport.responseXML, "/tree/VOInfo")[0].getAttribute('idVO'));
+						if(idVO != "null"){
+							proxy="false";
+							document.getElementsByClassName('dialogFocus')[0].style.display = "none";
+							document.getElementById('proxy-frame').src = "https://flyback.cnaf.infn.it/storage?p_p_id=Login_WAR_Login11_INSTANCE_3VR10oaiwbkU&p_p_lifecycle=0&p_p_state=pop_up&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=2&_Login_WAR_Login11_INSTANCE_3VR10oaiwbkU_myaction=showRenewProxyDM&_Login_WAR_Login11_INSTANCE_3VR10oaiwbkU_idVo="+idVO;
+						}
+					};
+					connexion.sendSync();
+				}
+				
+				if(num_dirs>0){
+					document.getElementById('download1').options[2].style.display = "none";
+				}
+				
+				num_items=num_files+num_dirs;
+				size_items=fileSizes+size_dir;
+				if((size_items>5368709120 || num_items>50) && proxy!="false"){
+					if (size_items>5368709120 && num_items<=50) {
+						document.getElementById("exceed_limit_size").style.display = "block";
+					}
+					if (size_items<=5368709120 && num_items>50) {
+						document.getElementById("exceed_limit_number").style.display = "block";
+					}
+					if (size_items>5368709120 && num_items>50) {
+						document.getElementById("exceed_limit_size_and_number").style.display = "block";
+					}					
+					$formid='download_big_form';
+					document.getElementById("big").style.display = "block";	
+					document.getElementById('generic_dialog_box').style.top = "80px";				
+				}					
+				else if (proxy!="false"){
+					var ele1 = document.getElementById("choose");
+					ele1.style.display = "block";
+				} else {
+					document.getElementById('generic_dialog_box').style.top = "80px";
+					var ele1 = document.getElementById("proxy");
+					ele1.style.display = "block";
+					document.getElementById('info').style.display = "none";
+//					document.getElementById('proxy-frame').contentWindow.document.getElementById('presentationLogin').style.display = "none";
+				}
+				
+				if (ok=="false") {
+					document.getElementById("choose").style.display = "none";
+					document.getElementById("big").style.display = "none";
+				}
+
+		     		var message = MessageHash[452];
+		    		$(oForm).getElementsBySelector('span[id="download_message"]')[0].innerHTML = message;
+	    	};
 	    	
-    	};
-	
-		modal.showDialogForm('download', 'download_form_container', onLoad, function(){
-			
-			hideLightBox(true);
-			var random=Math.floor(Math.random() * 1000000000);			
-			var userSelection = ajaxplorer.getUserSelection();	
-					
-			if(gaTrackEvent){
-	            			fileNames = userSelection.getFileNames();
-	            			for(var i=0; i<fileNames.length;i++){
-	            				gaTrackEvent("Data", "Download", fileNames[i]);
-	            			}
-	        }
-	        
-	        if($formid=='download_form'){
-						userSelection.updateFormOrUrl($('download_form'));
-						var connexion = new Connexion();
-			 			connexion.addParameter('get_action', 'download');
-			 			connexion.addParameter('keep', 'false');
-			 			connexion.addParameter('big', 'false');
-			 			connexion.addParameter('cloud', 'false');
-			 			connexion.addParameter('PC', 'true');
-			} 
-			
-			if($formid=='download_big_form'){
-			  			userSelection.updateFormOrUrl($('download_big_form'));
-						var connexion = new Connexion();
-			 			connexion.addParameter('get_action', 'download');
-			 			connexion.addParameter('keep', 'false');
-			 			connexion.addParameter('big', 'true');
-			 			
-			 			var protocol=document.getElementById("download1").value;
-			 			var server=document.getElementById("download2").value;
-						var username=document.getElementById("download3").value;
-						var password=document.getElementById("download4").value;
-						var folder=document.getElementById("download5").value;
-						var port=document.getElementById("download6").value;
-	
-						connexion.addParameter('username', username);
-			 			connexion.addParameter('server', server);
-			 			connexion.addParameter('password', password);	
-			 			connexion.addParameter('random', random);
-			 			connexion.addParameter('protocol', protocol);
-			 			connexion.addParameter('folder', folder);
-			 			connexion.addParameter('cloud', 'false');
-			 			connexion.addParameter('PC', 'false');
-			 			connexion.addParameter('port', port);	 			
-			 }
-	  
-			 if($formid=='download_cloud_form'){
+	    	
+	    	modal.showDialogForm('download', 'download_form_container', onLoad, function(){
+				hideLightBox(true);
+				var random=Math.floor(Math.random() * 1000000000);			
+				var userSelection = ajaxplorer.getUserSelection();	
+				if(gaTrackEvent){
+	        			fileNames = userSelection.getFileNames();
+	        			for(var i=0; i<fileNames.length;i++){
+	        				gaTrackEvent("Data", "Download", fileNames[i]);
+	        			}
+	        	}
+		        if($formid=='download_cloud_form'){
 			 			userSelection.updateFormOrUrl($('download_cloud_form'));
 						var connexion = new Connexion();
 			 			connexion.addParameter('get_action', 'download');
@@ -1295,50 +1422,168 @@ var $browser_version= BrowserDetect.version;
 			 			connexion.addParameter('big', 'false');
 			 			connexion.addParameter('cloud', 'true');
 			 			connexion.addParameter('random', random);
-			 			connexion.addParameter('PC', 'false');	
-			 }
-			 
-						var i=0;
-						fileNames.each(function(filename){
-							connexion.addParameter('file_'+i, filename);
-							i++;
-		});
-
-		 			connexion.onComplete = function(transport){	
-		 					 							
-						if (ajaxplorer.actionBar.parseXmlMessage(transport.responseXML)) {
-							var agent = navigator.userAgent;
-							if($formid=='download_form'){	
-								$('download_form').action = window.ajxpServerAccessPath;
-								$('download_form').secure_token.value = Connexion.SECURE_TOKEN;
-								$('download_form').select("input").each(function(input){
-									if ($('download0').checked && input.name=='keep') {
-										input.value = "true";									
-									}
-								});
-								$('download_form').submit();
-								
+			 			connexion.addParameter('PC', 'false');
+			 			connexion.addParameter('count_files_in_dir', false);	
+					 }	
+					 		
+		        if($formid=='download_form'){
+					var size_of_files = ajaxplorer.getUserSelection().getFileSizes();
+					userSelection.updateFormOrUrl($('download_form'));
+					var connexion = new Connexion();
+		 			connexion.addParameter('get_action', 'download');
+		 			connexion.addParameter('keep', 'false');
+		 			connexion.addParameter('big', 'false');
+		 			connexion.addParameter('cloud', 'false');
+		 			connexion.addParameter('PC', 'true');
+		 			connexion.addParameter('count_files_in_dir', false);
+		 			connexion.addParameter('files_num', total_files_num);
+		 			connexion.addParameter('random', random);
+		 			if(num_files>0){
+				 		var i=0;
+				 		fileNames.each(function(filename){
+							if (dirNames.indexOf(filename)==-1) {
+								connexion.addParameter('file_'+i, filename);
+								connexion.addParameter('size_'+i, size_of_files[i]);
+								i++;
 							}
-
-						} else {
-
+						});
+					}
+					if(num_dirs>0){
+						for (var i = 0; i < num_dirs; i++) {
+							connexion.addParameter('dir_'+i, dirNames[i]);
+						}
+					}
+					connexion.onComplete = function(transport){
+		 				if (ajaxplorer.actionBar.parseXmlMessage(transport.responseXML)) {
+							var agent = navigator.userAgent;
+							$('download_form').action = window.ajxpServerAccessPath;
+							$('download_form').secure_token.value = Connexion.SECURE_TOKEN;
+							$('download_form').select("input").each(function(input){
+								if ($('download0').checked && input.name=='keep') {
+									input.value = "true";									
+								}
+							});
+							$('download_form').submit();
+						}
+					}.bind(this);
+					connexion.sendSync();
+					return false;
+				}
+				
+				if($formid=='download_big_form'){
+			  		var size_of_files = ajaxplorer.getUserSelection().getFileSizes();
+			  		userSelection.updateFormOrUrl($('download_big_form'));
+					var connexion = connexion_remote(random, total_files_num);
+										 
+		 			if(num_files>50){
+		 				var offset_file = 0;
+						var x=0;
+						var y=0;
+						var z=1;
+						fileNames.each(function(filename){
+							if (dirNames.indexOf(filename)==-1){
+								if(((x+1)<(50)) && y!=(num_files-1)){
+									connexion.addParameter('file_'+x, filename);
+									connexion.addParameter('size_'+x, size_of_files[x]);
+									x++;
+									y++;
+								} else {
+									offset_file=(z-1)*50;
+									connexion.addParameter('file_'+x, filename);
+									connexion.addParameter('size_'+x, size_of_files[x]);
+									connexion.addParameter('offset_file', offset_file);
+									x=0;
+									z++;
+									y++; 
+						 			connexion.onComplete = function(transport){
+							 			var message = XPathSelectSingleNode(transport.responseXML, "//message");
+										if(message.getAttribute("type") == "ERROR"){
+											var onLoad2 = function(oForm2){
+												document.getElementById("big_error").style.display = "block";
+												$(oForm2).getElementsBySelector('span[id="big_error_message"]')[0].innerHTML = message.firstChild.nodeValue;
+											};
+											modal.showDialogForm('download', 'big_error', onLoad2, function(){
+												hideLightBox(true);
+											}, null, true);                      			
+										}
+										ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+									}.bind(this);
+									connexion.sendAsync();
+									connexion = connexion_remote(random, total_files_num);
+								}
+							}
+						});
+					} 
+					
+					if(num_files>0 && num_files<=50){
+						var y=0;
+						fileNames.each(function(filename){
+							if (dirNames.indexOf(filename)==-1) {
+								connexion.addParameter('file_'+y, filename);
+								connexion.addParameter('size_'+y, size_of_files[y]);
+								y++;
+							}
+						});
+						connexion.onComplete = function(transport){
+							var message = XPathSelectSingleNode(transport.responseXML, "//message");
+							if(message.getAttribute("type") == "ERROR"){
+								var onLoad2 = function(oForm2){
+									document.getElementById("big_error").style.display = "block";
+									$(oForm2).getElementsBySelector('span[id="big_error_message"]')[0].innerHTML = message.firstChild.nodeValue;
+								};
+								modal.showDialogForm('download', 'big_error', onLoad2, function(){
+									hideLightBox(true);
+								}, null, true);                      
+							}
 							ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
-			}
-		}.bind(this);
-			connexion.sendAsync();
-	return false;
-	});			
+						}.bind(this);
+						connexion.sendAsync();
+					}
+					
+										
+					
+					if(num_dirs>0){					
+						if (num_files!=0) {
+							connexion = connexion_remote(random, total_files_num);
+						}
+						var element = null;
+						for (var i = 0; i < num_dirs; i++){
+							element = dirNames[i];
+							connexion.addParameter('dir', element);
+							connexion.addParameter('offset_dir', offsets[i]);
+							connexion.onComplete = function(transport){
+								var message = XPathSelectSingleNode(transport.responseXML, "//message");
+									if(message.getAttribute("type") == "ERROR"){
+										var onLoad2 = function(oForm2){
+											document.getElementById("big_error").style.display = "block";
+											$(oForm2).getElementsBySelector('span[id="big_error_message"]')[0].innerHTML = message.firstChild.nodeValue;
+										};
+										modal.showDialogForm('download', 'big_error', onLoad2, function(){
+											hideLightBox(true);
+										}, null, true);                      
+									}
+								ajaxplorer.actionBar.parseXmlMessage(transport.responseXML);
+							}.bind(this);
+							connexion.sendAsync();
+							if (i!=num_dirs-1) {
+								connexion = connexion_remote(random, total_files_num);
+							}
+						}
+					}
+				}
+				modal.showDialogForm('download', 'mail_box', null, function(){hideLightBox();}, null, true);
+			});
+						
 			]]></clientCallback>
 			<clientForm id="download_form_container"><![CDATA[
-
-
+			
 			<div id="download_form_container" action="download" box_width="450">					
-										
-					<div id="choose" class="accordion_content" style="display:none;">
-						<form>Where do you like saving the selected files?</br>
-							<input type="radio" name="VO-share" id="pc" style="margin-top:7px;" value="PC" checked>On my PC<br>
-							<input type="radio" name="VO-share" id="remote" value="server">On a remote Server<br>
-							<input type="radio" name="VO-share" id="clouds" value="cloud">On my Cloud storage<br><br>
+					<div id="info" class="accordion_content" style="display:block; font-size:11.5px;"></div>				
+					<div id="choose" class="accordion_content" style="display:none; font-size:11.5px;">
+						<form></br>
+							<input type="radio" name="VO-share" id="pc" style="margin-top:7px; margin-right:4px;" value="PC" checked>On my PC<br><br>
+							<input type="radio" name="VO-share" id="remote" style="margin-right:4px;" value="server">On a remote Server<br>
+							<input type="hidden" name="VO-share" id="clouds" value="cloud">
 						</form>
 					</div>	
 
@@ -1353,33 +1598,47 @@ var $browser_version= BrowserDetect.version;
 					</div>
 
 
+					<div id="proxy" style="display:none;">
+						<div style='color:red; font-size:14px; margin-top:10px; margin-bottom:10px;'> Your credentials are near to expiration.</br> Renew them and repeat the download.</div>
+						<iframe id="proxy-frame" src="" width="320px" height="185px" style="border:0px; overflow:hidden;">
+						</iframe>
+					</div>
+
 					<div id="small" style="display:block;">
 		            <form id="download_form">
-		            	<input type="checkbox" name="keep" id="download0" style="margin-top:7px;" value="false" /><span id="download_message"></span><br />
+		            	<input type="checkbox" name="keep" id="download0" style="margin-top:7px; display:none;" value="false" /><span id="download_message" style="display:none;"></span><br />
 		            	<input type="hidden" name="get_action" value="download">
 		            	<input type="hidden" name="secure_token" value="">
 		            	<input type="hidden" name="local" value="true">
+		            	<input type="hidden" name="PC" value="true">
 		            </form>
 		           </div>
 
 
 		           <div id="big" style="display:none;">
-		           <span>The amount size of the files selected exceeds the <b>threshold of 5GB</b>. Please indicate an <b>FTP</b>, <b>SFTP</b> or <b>WebDAV</b> server where to copy them.<p>You will be <b>notified by mail</b> as soon as the transfer ends.<p/><span>
-		           <table>
+			           <div id="exceed_limit_number" style="display:none;">
+			           		Selecting more than <b>50</b> items you can not save them on your PC, but only on a <b>remote server</b>.
+			           </div>
+			           <div id="exceed_limit_size" style="display:none;">
+			           		Selecting elements with size higher than <b>5 GBs</b> you can not save them on your PC, but only on a <b>remote server</b>.
+			           </div>
+			           <div id="exceed_limit_size_and_number" style="display:none;">
+			           		Selecting more than <b>50</b> elements and with size higher than <b>5 GBs</b> you can not save them on your PC, but only on a <b>remote server</b>.
+			           </div>
+		           <table style="width:100%;">
 		            <form id="download_big_form" method="POST" enctype="multipart/form-data"></br>
-		            	<tr><td width:30%; margin-bottom:5px;>Protocol:</td><td><select id="download1">
+		            	<tr><td width:30%; margin-bottom:5px;>Protocol:</td><td><select id="download1" style="width:90%;" onchange="check_protocol('download1')">
 						  <option value="sftp">SFTP</option>
 						  <option value="ftp">FTP</option>
 						  <option value="http">WebDAV</option>
 						</select></td></tr>
-				            	<tr><td width=25%; margin-bottom=5px;>Server url (*)</td><td width=40%;><input type="text" name="server" id="download2"></td><td width=35%;><font color=”#cccccc”>(Es: server.example.it)</font></td></tr>
-				            	<tr><td width=25%; margin-bottom=5px;>Path</td><td width=40%;><input type="text" name="folder" id="download5"></td><td width=35%;><font color=”#cccccc”>(Es: /home/user/folder/)</font></td></tr>
-				            	<tr><td width=25%; margin-bottom=5px;>Port</td><td width=40%;><input type="text" name="folder" id="download6"></td><td width=35%;><font color=”#cccccc”>(Default: protocol port)</font></td></tr>
-				            	<tr><td width=25%; margin-bottom=5px;>Username (*)</td><td width=40%;><input type="text" name="username" id="download3"></td></tr>
-				            	<tr><td width=25%; margin-bottom=5px;>Password</td><td width=40%;><input type="password" name="pwd" id="download4"></td></tr>
+				            	<tr><td width=30%; margin-bottom=5px;>Server url <span style="color:red; font-weight:bold; font-size:15px;">*</span></td><td width=70%;><input type="text" name="server" id="download2" placeholder="Es: server.example.it" style="width:90%;"></td></tr>
+				            	<tr><td width=30%; margin-bottom=5px;>Path</td><td width=70%;><input type="text" name="folder" id="download5" placeholder="Es: /home/user/folder/" style="width:90%;"></td></tr>
+				            	<tr><td width=30%; margin-bottom=5px;>Port</td><td width=70%;><input type="text" name="folder" id="download6"  placeholder=" if empty default protocol port is used" style="width:90%;"></td></tr>
+				            	<tr><td width=30%; margin-bottom=5px;>Username <span style="color:red; font-weight:bold; font-size:15px;">*</span></td><td width=70%;><input type="text" name="username" id="download3" style="width:90%;"></td></tr>
+				            	<tr><td width=30%; margin-bottom=5px;>Password</td><td width=70%;><input type="password" name="pwd" id="download4" style="width:90%;"></td></tr>
 				            	<tr></tr>
-				            	<tr><td width=25%;>(*) Mandatory field</td></tr>
-				            	
+				            	<tr><td width=30%;><span style="color:red; font-weight:bold; font-size:15px;">*</span> Mandatory field</td></tr>
 				            	<input type="hidden" name="get_action" value="download">
 				            	<input type="hidden" name="secure_token" value="">
 				            	<input type="hidden" name="local" value="true">
@@ -1387,14 +1646,21 @@ var $browser_version= BrowserDetect.version;
 				            </form>
 			            </table>
 		           </div>
-		     </br>
-		     </div>    
+			</br>
+			</div>	
+			   <div id="big_error" action="download" box_width="350" style="display:none;">
+			   	<span id="big_error_message"></span>
+			   </div>
+			   <div id="mail_box" action="download" box_width="350">
+			   	<span style="font-size:14px;"><p><b>Transfer started.</b></p><p>You will be <span style="color:red;">notified by mail</span> as soon as the transfer ends.<p/><span>
+			   </div>
 			]]></clientForm>
-			<serverCallback methodName="switchAction"></serverCallback>
-		</processing>
-	</action>
-
 			
+					</processing>
+	</action>
+	
+	
+				
 	</actions>
 	<client_configs>
 		<component_config className="InfoPanel">

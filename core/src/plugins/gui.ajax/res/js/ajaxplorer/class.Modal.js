@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -389,7 +389,7 @@ Class.create("Modal", {
 		var winWidth = document.viewport.getWidth();
 		var winHeight = document.viewport.getHeight();
         var element = $(this.elementName);
-		boxWidth = element.getWidth();
+		var boxWidth = element.getWidth();
 		var boxHeight = element.getHeight();
 		
 		if(checkHeight && boxHeight > parseInt(winHeight*90/100)){
@@ -501,16 +501,35 @@ Class.create("Modal", {
 	 * Create a simple tooltip
 	 * @param element HTMLElement
 	 * @param title String
+     * @param position Describe tooltip position
+     * @param className Add an arbitrary class to the tooltip
+     * @param hookTo either 'element' or 'pointer'
+     * @param updateOnShow Load the tooltip content from the "title" element passed.
 	 */
-	simpleTooltip : function(element, title){
+	simpleTooltip : function(element, title, position, className, hookTo, updateOnShow){
+        if(!position) position = 'bottom right';
+        if(!hookTo) hookTo = 'pointer';
 		element.observe("mouseover", function(event){
-			var x = Event.pointerX(event)+10;
-			var y = Event.pointerY(event)+10;
 			if(!this.tooltip){
 				this.tooltip = new Element("div", {className:"simple_tooltip"});
+                if(className) this.tooltip.addClassName(className);
 				$$('body')[0].insert(this.tooltip);
 			}
-			this.tooltip.update(title);
+            if(updateOnShow){
+                this.tooltip.update(title.cloneNode(true));
+            }else{
+                this.tooltip.update(title);
+            }
+            var baseX = hookTo == "element" ? Element.cumulativeOffset(element).left : Event.pointerX(event);
+            var baseY = hookTo == "element" ? Element.cumulativeOffset(element).top : Event.pointerY(event);
+            var x = (position.indexOf('right') != -1 ? baseX+10 : (baseX - 10 - parseInt(this.tooltip.getWidth())) );
+            var y = baseY+10;
+            if(position.indexOf('middle') != -1){
+                y -= 5 + parseInt(this.tooltip.getHeight())/2;
+            }else if(position.indexOf('bottom') != -1){
+                y -= 13 + parseInt(element.getHeight());
+            }
+
 			this.tooltip.setStyle({top:y+"px",left:x+"px"});
 			if(this.tipTimer){
 				window.clearTimeout(this.tipTimer);

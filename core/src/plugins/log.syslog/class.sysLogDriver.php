@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -152,12 +152,14 @@ class sysLogDriver extends textLogDriver {
 	 * @param Integer $month The month to list.
 	 * @return null
 	 */
-	function xmlListLogFiles($nodeName="file", $year=null, $month=null, $rootPath = "/logs"){
-        print "<$nodeName icon=\"toggle_log.png\" date=\"\"
+	function xmlListLogFiles($nodeName="file", $year=null, $month=null, $rootPath = "/logs", $print = true){
+        $xml = "<$nodeName icon=\"toggle_log.png\" date=\"\"
         display=\"Logs are not readable via this GUI, they are sent directly to your system logger daemon.\"
         text=\"Logs are not readable via this GUI, they are sent directly to your system logger daemon.\"
         is_file=\"1\"
         filename=\"$rootPath/see\"/>";
+        if($print) print $xml;
+        return array($xml);
 	}
 	
 	/**

@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -368,7 +368,7 @@ Class.create("SearchEngine", AjxpPane, {
 		var folder = ajaxplorer.getContextNode().getPath();
 		if(folder == "/") folder = "";
 		window.setTimeout(function(){
-			this.searchFolderContent(folder);
+			this.searchFolderContent(folder, ajaxplorer.getContextNode().getMetadata().get("remote_indexation"));
 		}.bind(this), 0);		
 	},
 	/**
@@ -510,33 +510,70 @@ Class.create("SearchEngine", AjxpPane, {
         this.hasResults = true;
 	},
     addNoResultString : function(){
-        $(this._resultsBoxId).insert(new Element('div').update("No results found."));
+        if(!$(this._resultsBoxId).down('#no-results-found')){
+            $(this._resultsBoxId).insert({top: new Element('div', {id:'no-results-found'}).update(MessageHash[478])});
+        }
     },
 	/**
 	 * Put a folder to search in the queue
 	 * @param path String
 	 */
-	appendFolderToQueue : function(path){
-		this._queue.push(path);
+	appendFolderToQueue : function(path, remoteIndexation){
+		this._queue.push({path:path,remoteIndexation:remoteIndexation?remoteIndexation:false});
 	},
 	/**
 	 * Process the next element of the queue, or finish
 	 */
 	searchNext : function(){
 		if(this._queue.length){
-			var path = this._queue.first();
+			var element = this._queue.first();
 			this._queue.shift();
-			this.searchFolderContent(path);
+			this.searchFolderContent(element.path, element.remoteIndexation);
 		}else{
 			this.updateStateFinished();
 		}
 	},
+
+    buildNodeProviderProperties: function(currentFolder, remote_indexation){
+
+        var props = {};
+        if(this._searchMode == "remote"){
+            /* REMOTE INDEXER CASE */
+            props.get_action = 'search';
+            props.query = this.crtText;
+            if(this.hasMetaSearch()){
+                props.fields =  this.getSearchColumns().join(',');
+            }
+        }else{
+
+            if(remote_indexation){
+
+                props.get_action = remote_indexation;
+                props.query = this.crtText;
+                if(this.hasMetaSearch()){
+                    props.fields =  this.getSearchColumns().join(',');
+                }
+                props.dir = currentFolder;
+
+            }else{
+
+                props.get_action = 'ls';
+                props.options = 'a' + (this.hasMetaSearch()?'l':'');
+                props.dir = currentFolder;
+
+            }
+
+        }
+        return props;
+
+    },
+
 	/**
 	 * Get a folder content and searches its children 
 	 * Should reference the IAjxpNodeProvider instead!! Still a "ls" here!
 	 * @param currentFolder String
 	 */
-	searchFolderContent : function(currentFolder){
+	searchFolderContent : function(currentFolder, remote_indexation){
 		if(this._state == 'interrupt') {
 			this.updateStateFinished();
 			return;
@@ -557,16 +594,39 @@ Class.create("SearchEngine", AjxpPane, {
             this.setOnLoad($(this._resultsBoxId));
             connexion.sendAsync();
         }else{
-            /* LIST CONTENT, SEARCH CLIENT SIDE, AND RECURSE */
-            var connexion = new Connexion();
-            connexion.addParameter('get_action', 'ls');
-            connexion.addParameter('options', 'a' + (this.hasMetaSearch()?'l':''));
-            connexion.addParameter('dir', currentFolder);
-            connexion.onComplete = function(transport){
-                this._parseXmlAndSearchString(transport.responseXML, currentFolder);
-                this.searchNext();
-            }.bind(this);
-            connexion.sendAsync();
+
+            if(remote_indexation){
+
+                var connexion = new Connexion();
+                connexion.addParameter('get_action', remote_indexation);
+                connexion.addParameter('query', this.crtText);
+                connexion.addParameter('dir', currentFolder);
+                if(this.hasMetaSearch()){
+                    connexion.addParameter('fields', this.getSearchColumns().join(','));
+                }
+                connexion.onComplete = function(transport){
+                    this._parseResults(transport.responseXML, currentFolder);
+                    this.removeOnLoad($(this._resultsBoxId));
+                    this.searchNext();
+                }.bind(this);
+                this.setOnLoad($(this._resultsBoxId));
+                connexion.sendAsync();
+
+            }else{
+
+                /* LIST CONTENT, SEARCH CLIENT SIDE, AND RECURSE */
+                var connexion = new Connexion();
+                connexion.addParameter('get_action', 'ls');
+                connexion.addParameter('options', 'a' + (this.hasMetaSearch()?'l':''));
+                connexion.addParameter('dir', currentFolder);
+                connexion.onComplete = function(transport){
+                    this._parseXmlAndSearchString(transport.responseXML, currentFolder);
+                    this.searchNext();
+                }.bind(this);
+                connexion.sendAsync();
+
+            }
+
         }
 	},
 	
@@ -588,7 +648,7 @@ Class.create("SearchEngine", AjxpPane, {
 					if(!node.isLeaf())
 					{
 						var newPath = node.getPath();
-						this.appendFolderToQueue(newPath);
+						this.appendFolderToQueue(newPath, node.getMetadata().get("remote_indexation"));
 					}
 				}
 			}		
@@ -603,6 +663,9 @@ Class.create("SearchEngine", AjxpPane, {
 		var nodes = XPathSelectNodes(oXmlDoc.documentElement, "tree");
         if(!nodes.length){
             this.addNoResultString();
+        }else{
+            var noRes =  $(this._resultsBoxId).down('#no-results-found');
+            if(noRes) noRes.remove();
         }
 		for (var i = 0; i < nodes.length; i++) 
 		{
@@ -643,14 +706,20 @@ Class.create("SearchEngine", AjxpPane, {
 		}
 		if(searchFileName && ajxpNode.getLabel().toLowerCase().indexOf(this.crtText) != -1){
 			this.addResult(currentFolder, ajxpNode);
-			return;
+            if(this._fileList){
+                this._fileList.reload();
+            }
+            return;
 		}
 		if(!searchCols) return;
 		for(var i=0;i<searchCols.length;i++){
 			var meta = ajxpNode.getMetadata().get(searchCols[i]);
 			if(meta && meta.toLowerCase().indexOf(this.crtText) != -1){
 				this.addResult(currentFolder, ajxpNode, meta);
-				return;			
+                if(this._fileList){
+                    this._fileList.reload();
+                }
+                return;
 			}
 		}
 	},

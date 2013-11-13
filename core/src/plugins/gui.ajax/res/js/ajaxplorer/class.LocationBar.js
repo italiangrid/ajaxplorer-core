@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -59,7 +59,22 @@ Class.create("LocationBar", {
 		locDiv.insert(this.currentPath);
 		var inputDims = this.currentPath.getDimensions();
 		this.currentPath.hide();
-		this.label = new Element('div', {className:'location_bar_label'}).update("/test");
+		
+		//		this.label = new Element('div', {className:'location_bar_label'}).update("/test");
+		
+		
+		/*****MODIFICATO DA NOI***********/
+
+		if (GetCookie('repo_lfc')=="true"){
+			this.label = new Element('div', {className:'location_bar_label'}).update(GetCookie('home_path_initial'));
+		}
+		else {
+			this.label = new Element('div', {className:'location_bar_label'}).update("/");
+		}
+
+		/*****FINE MODIFICA***********/
+		
+		
 		this.label.setStyle({
 			marginTop: 1,
 			fontSize:'11px',
@@ -204,6 +219,9 @@ Class.create("LocationBar", {
 	 * Observer for node change
 	 * @param newNode AjxpNode
 	 */
+	 
+	/*****FINE ORIGINALE***********/
+	/*
 	updateLocationBar: function (newNode)
 	{
 		if(Object.isString(newNode)){
@@ -222,6 +240,57 @@ Class.create("LocationBar", {
 		this.currentPath.value = this.realPath;
 		this.setModified(false);
 	},	
+	*/
+	/*****FINE ORIGINALE***********/
+	
+	/*****MODIFICATO DA NOI***********/
+	
+	updateLocationBar: function (newNode)
+	{
+		if(Object.isString(newNode)){
+			newNode = new AjxpNode(newNode);
+		}
+		var vo=GetCookie('home_path_initial').split("/");
+		var current_vo=vo[2];	
+		if(GetCookie('home')||current_vo==GetCookie('active')) {
+			var home = GetCookie('home_path_initial');
+		} else {
+			var home = GetCookie('home');
+		}			
+		var newPath = newNode.getPath();
+		if(newNode.getMetadata().get('paginationData')){
+			if(GetCookie('repo_lfc')=="true" || newNode.getLabel()=="Grid"){
+//				newPath += "##" + home + '/' + newNode.getMetadata().get('paginationData').get('current');
+				newPath = getRepName(newPath) + '/';
+			} else {
+				newPath += "##" + newNode.getMetadata().get('paginationData').get('current');	
+			}
+		}
+		this.realPath = newPath;
+		if(getBaseName(newPath) != newNode.getLabel()){
+			if (GetCookie('repo_lfc')!="true") {
+				if (newNode.getLabel()!="Grid"){
+					this.currentLabel = getRepName(newPath) + '/';
+					}
+			} else {
+				this.currentLabel = home + this.realPath;
+			}
+		} else {
+		
+			if (GetCookie('repo_lfc')!="true") {
+				this.currentLabel = this.realPath;
+			} else {
+				this.currentLabel = home + this.realPath;
+			}
+		}
+		this.label.update(this.currentLabel);
+		this.currentPath.value = this.realPath;
+		this.setModified(false);
+	},	
+
+/*****FINE MODIFICA***********/
+
+	
 	/**
 	 * Change the state of the bar
 	 * @param bool Boolean

@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 Class.create("ShareCenter", {
 
@@ -88,6 +88,14 @@ Class.create("ShareCenter", {
                     conn.addParameter("right_watch_"+index, entry.down('input[name="n"]').checked ? "true":"false");
                 }
                 if(entry.NEW_USER_PASSWORD){
+                    //check entry characters
+                    var currentId =entry.getAttribute("data-entry_id");
+                    var newCurrentId = currentId.replace(/[^a-zA-Z0-9.!@#$%&'*+-/=?\^_`{|}~-]/g, '');
+                    if( newCurrentId != currentId ){
+                        alert(MessageHash["share_center.78"].replace('%CURRENT%', currentId).replace('%NEW%', newCurrentId));
+                        conn.addParameter("user_"+index, newCurrentId);
+                        entry.setAttribute("data-entry_id", newCurrentId);
+                    }
                     conn.addParameter("user_pass_"+index, entry.NEW_USER_PASSWORD);
                 }
                 conn.addParameter("entry_type_"+index, entry.hasClassName("group_entry")?"group":"user");
@@ -213,7 +221,7 @@ Class.create("ShareCenter", {
             };
             oForm.down('#repo_label').setValue(getBaseName(this.currentNode.getPath()));
             if(!$('share_folder_form').autocompleter){
-                var pref = ajaxplorer.getPluginConfigs("ajxp_plugin[@name='share']").get("SHARED_USERS_TMP_PREFIX");
+                var pref = ajaxplorer.getPluginConfigs("ajxp_plugin[@id='action.share']").get("SHARED_USERS_TMP_PREFIX");
                 $('share_folder_form').autocompleter = new AjxpUsersCompleter(
                     $("shared_user"),
                     $("shared_users_summary"),
@@ -227,7 +235,7 @@ Class.create("ShareCenter", {
                             confirmPass: $("shared_pass_confirm")
                         },
                         indicator: $("complete_indicator"),
-                        minChars:parseInt(ajaxplorer.getPluginConfigs("ajxp_plugin[@name='share']").get("SHARED_USERS_LIST_MINIMUM"))
+                        minChars:parseInt(ajaxplorer.getPluginConfigs("conf").get("USERS_LIST_COMPLETE_MIN_CHARS"))
                     }
                 );
             }
@@ -244,6 +252,7 @@ Class.create("ShareCenter", {
                     this._currentRepositoryLabel = json['label'];
                     this._currentRepositoryLink = json['repository_url'];
                     oForm.down('input#repo_label').value = json['label'];
+                    oForm.down('textarea#repo_description').value = json['description'];
                     oForm.down('#complete_indicator').hide();
                     if(json.minisite){
                         oForm.down('#share_container').setValue(json.minisite.public_link);
@@ -374,6 +383,14 @@ Class.create("ShareCenter", {
                     }.bind(this));
                     this.updateDialogButtons(oForm.down("div.dialogButtons"), "file");
                 }else{
+                    this.maxexpiration = parseInt(ajaxplorer.getPluginConfigs("ajxp_plugin[@id='action.share']").get("FILE_MAX_EXPIRATION"));
+                    if(this.maxexpiration > 0){
+                        oForm.down("[name='expiration']").setValue(this.maxexpiration);
+                    }
+                    this.maxdownload = parseInt(ajaxplorer.getPluginConfigs("ajxp_plugin[@id='action.share']").get("FILE_MAX_DOWNLOAD"));
+                    if(this.maxdownload > 0){
+                        oForm.down("[name='downloadlimit']").setValue(this.maxdownload);
+                    }
                     var button = $(oForm).down('div#generate_publiclet');
                     button.observe("click", this.generatePublicLinkCallback.bind(this));
                 }
@@ -539,11 +556,27 @@ Class.create("ShareCenter", {
         var userSelection = ajaxplorer.getUserSelection();
         if(!userSelection.isUnique() || (userSelection.hasDir() && !userSelection.hasMime($A(['ajxp_browsable_archive'])))) return;
         var oForm = $(modal.getForm());
-        oForm.down('img#generate_image').src = window.ajxpResourcesFolder+"/images/autocompleter-loader.gif";
         var publicUrl = window.ajxpServerAccessPath+'&get_action=share';
         publicUrl = userSelection.updateFormOrUrl(null,publicUrl);
         var conn = new Connexion(publicUrl);
-        conn.setParameters(oForm.serialize(true));
+        var serialParams = oForm.serialize(true);
+        if(serialParams["expiration"] && ! this.checkPositiveNumber(serialParams["expiration"])
+            || serialParams["downloadlimit"] && ! this.checkPositiveNumber(serialParams["downloadlimit"])){
+            ajaxplorer.displayMessage("ERROR", MessageHash["share_center.75"]);
+            return;
+        }
+        if(this.maxexpiration > 0 && !(serialParams["expiration"] > 0 && serialParams["expiration"] <= this.maxexpiration) ){
+            ajaxplorer.displayMessage("ERROR", "Expiration must be between 1 and " + this.maxexpiration);
+            return;
+        }
+        if(this.maxdownload > 0 && !(serialParams["downloadlimit"] > 0 && serialParams["downloadlimit"] <= this.maxdownload) ){
+            ajaxplorer.displayMessage("ERROR", "Download limit must be between 1 and " + this.maxdownload);
+            return;
+        }
+
+        oForm.down('img#generate_image').src = window.ajxpResourcesFolder+"/images/autocompleter-loader.gif";
+        conn.setParameters(serialParams);
+
         conn.addParameter('get_action','share');
         var oThis = this;
         conn.onComplete = function(transport){
@@ -626,6 +659,11 @@ Class.create("ShareCenter", {
                 });
             }.bind(this));
         }
+    },
+
+    checkPositiveNumber : function(str){
+        var n = ~~Number(str);
+        return String(n) === str && n >= 0;
     }
 
 });

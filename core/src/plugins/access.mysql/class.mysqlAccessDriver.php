@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -189,7 +189,10 @@ class mysqlAccessDriver extends AbstractAccessDriver
 					if(count($split) == 3 && $split[0]=="field" && is_numeric($split[2]) && in_array($split[1], $fields)){
 						if(!isSet($rows[intval($split[2])])) $rows[intval($split[2])] = array();
 						$rows[intval($split[2])][$split[1]] = $val;
-					}
+					}else if(count($split) == 2 && $split[0] == "field" && in_array($split[1], $fields)){
+                        if(!isSet($rows[0])) $rows[0] = array();
+                        $rows[0][$split[1]] = $val;
+                    }
 				}
 				if(isSet($current_table)){
 					$qMessage = '';
@@ -209,29 +212,27 @@ class mysqlAccessDriver extends AbstractAccessDriver
 					}
 					$logMessage = $qMessage;
 				}else if(isSet($new_table)){
-					$fieldsDef = "";
+					$fieldsDef = array();
 					$pks = array();
 					$indexes = array();
 					$uniqs = array();
 					foreach ($rows as $index=>$row){
-						$fieldsDef .= $this->makeColumnDef($row);
+						$fieldsDef[]= $this->makeColumnDef($row);
 						// Analyse keys
 						if($row["pk"] == "1")$pks[] = $row["name"];
 						if($row["index"]=="1") $indexes[] = $row["name"];
 						if($row["uniq"]=="1") $uniqs[] = $row["name"];
 						
-						if($index < count($rows)-1){
-							$fieldsDef.=",";
-						}
 					}
+                    $fieldsDef = implode(",", $fieldsDef);
 					if(count($pks)){
-						$fieldsDef.= ",PRIMARY KEY (".join(",", $pks).")";
+						$fieldsDef.= ",PRIMARY KEY (".implode(",", $pks).")";
 					}
 					if(count($indexes)){
-						$fieldsDef.=",INDEX (".join(",", $indexes).")";
+						$fieldsDef.=",INDEX (".implode(",", $indexes).")";
 					}
 					if(count($uniqs)){
-						$fieldsDef.=",UNIQUE (".join(",", $uniqs).")";
+						$fieldsDef.=",UNIQUE (".implode(",", $uniqs).")";
 					}
 					$query = "CREATE TABLE $new_table ($fieldsDef)"; 
 					$res = $this->execQuery((trim($query)));
@@ -260,7 +261,7 @@ class mysqlAccessDriver extends AbstractAccessDriver
 					foreach ($tables as $index => $tableName){
 						$tables[$index] = basename($tableName);
 					}
-					$query.= " ".join(",", $tables);
+					$query.= " ".implode(",", $tables);
 					$res = $this->execQuery($query);
 					$reload_current_node = true;
 				}else{
@@ -384,8 +385,8 @@ class mysqlAccessDriver extends AbstractAccessDriver
 						$pkString = "";
 						foreach ($row as $key=>$value){
 							if(in_array($key, $blobCols)){
-								$sizeStr = "-NULL";
-								if(strlen($value)) $sizeStr = "-".AJXP_Utils::roundSize(strlen($sizeStr));
+								$sizeStr = " - NULL";
+								if(strlen($value)) $sizeStr = " - ".AJXP_Utils::roundSize(strlen($value));
 								print "$key=\"BLOB$sizeStr\" ";
 							}else{
 								$value = str_replace("\"", "", $value);
@@ -496,7 +497,7 @@ class mysqlAccessDriver extends AbstractAccessDriver
 			}
 			$newFlags[] = $flag;
 		}
-		return join(" ", $newFlags);
+		return implode(" ", $newFlags);
 	}
 	
 	function sqlTypeToSortType($fieldType){

@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 
@@ -95,17 +95,20 @@ abstract class AbstractAjxpUser
         }else{
             $hashes = explode(",", $hashes);
         }
-        $newHash =  md5($this->id.":".time());
+        $newHash = md5($this->id.":".AJXP_Utils::generateRandomString());
         array_push($hashes, $newHash);
         $this->setPref("cookie_hash", implode(",",$hashes));
         $this->save("user");
-		return $newHash; //md5($this->id.":".$newHash.":ajxp");
+		return $newHash;
 	}
 	
 	function getId(){
 		return $this->id;
 	}
 
+    function setId($id){
+        $this->id = $id ;
+    }
     /**
      * @return bool
      */
@@ -338,8 +341,9 @@ abstract class AbstractAjxpUser
         return $password;
     }
 
-    public function setGroupPath($groupPath)
+    public function setGroupPath($groupPath, $update = false)
     {
+        if(strlen($groupPath) > 1) $groupPath = rtrim($groupPath, "/");
         $this->groupPath = $groupPath;
     }
 
@@ -367,10 +371,15 @@ abstract class AbstractAjxpUser
             $index ++;
         }
         if($this->hasParent() && isSet($this->parentRole)){
-            // It's a shared user, we don't want it to inherit the rights
+            // It's a shared user, we don't want it to inherit the rights...
             $this->parentRole->clearAcls();
+            //... but we want the parent user's role, filtered with inheritable properties only.
+            $stretchedParentUserRole = AuthService::limitedRoleFromParent($this->parentUser);
+            if($stretchedParentUserRole !== null){
+                $this->parentRole = $this->parentRole->override($stretchedParentUserRole);
+            }
+
             $this->mergedRole = $this->parentRole->override($this->personalRole);
-            //$this->mergedRole
         }
     }
 
@@ -430,6 +439,20 @@ abstract class AbstractAjxpUser
     public function getResolveAsParent()
     {
         return $this->resolveAsParent;
+    }
+
+    /**
+     * @param array $roles
+     * @return array
+     */
+    protected function filterRolesForSaving($roles){
+        $res = array();
+        foreach($roles as $rName => $status){
+            if(!$status) continue;
+            if(strpos($rName, "AJXP_GRP_/") === 0) continue;
+            $res[$rName] = true;
+        }
+        return $res;
     }
 
 }

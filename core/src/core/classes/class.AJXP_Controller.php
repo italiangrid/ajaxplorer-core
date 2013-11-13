@@ -1,22 +1,22 @@
 <?php 
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 defined('AJXP_EXEC') or die( 'Access not allowed');
 /**
@@ -49,7 +49,7 @@ class AJXP_Controller{
 		if(!isSet(self::$xPath)){
 			
 			$registry = AJXP_PluginsService::getXmlRegistry( false );
-			$changes = self::filterActionsRegistry($registry);
+			$changes = self::filterRegistryFromRole($registry);
 			if($changes) AJXP_PluginsService::updateXmlRegistry($registry);
 			self::$xPath = new DOMXPath($registry);		
 		}
@@ -62,7 +62,7 @@ class AJXP_Controller{
      * @param DOMDocument $registry
      * @return bool
      */
-	public static function filterActionsRegistry(&$registry){
+	public static function filterRegistryFromRole(&$registry){
 		if(!AuthService::usersEnabled()) return false ;
 		$loggedUser = AuthService::getLoggedUser();
 		if($loggedUser == null) return false;
@@ -86,9 +86,31 @@ class AJXP_Controller{
                 $changes = true;
             }
         }
+        $parameters = $loggedUser->mergedRole->listParameters();
+        foreach($parameters as $scope => $paramsPlugs){
+            if($scope == AJXP_REPO_SCOPE_ALL || $scope == $crtRepoId || ($crtRepo->hasParent() && $scope == AJXP_REPO_SCOPE_SHARED)){
+                foreach($paramsPlugs as $plugId => $params){
+                    foreach($params as $name => $value){
+                        // Search exposed plugin_configs, replace if necessary.
+                        $searchparams = $xPath->query("plugins/*[@id='$plugId']/plugin_configs/property[@name='$name']");
+                        if(!$searchparams->length) continue;
+                        $param = $searchparams->item(0);
+                        $newCdata = $registry->createCDATASection(json_encode($value));
+                        $param->removeChild($param->firstChild);
+                        $param->appendChild($newCdata);
+                    }
+                }
+            }
+        }
 		return $changes;
 	}
 
+
+    /**
+     * @param $actionName
+     * @param $path
+     * @return bool
+     */
     public static function findRestActionAndApply($actionName, $path){
         $xPath = self::initXPath();
         $actions = $xPath->query("actions/action[@name='$actionName']");
@@ -105,7 +127,7 @@ class AJXP_Controller{
         $restPath = $restPathList->item(0)->nodeValue;
         $paramNames = explode("/", trim($restPath, "/"));
         $path = array_shift(explode("?", $path));
-        $paramValues = explode("/", trim($path, "/"), count($paramNames));
+        $paramValues = array_map("urldecode", explode("/", trim($path, "/"), count($paramNames)));
         foreach($paramNames as $i => $pName){
             if(strpos($pName, "+") !== false){
                 $paramNames[$i] = str_replace("+", "", $pName);
@@ -162,6 +184,7 @@ class AJXP_Controller{
      * @return bool
      */
 	public static function findActionAndApply($actionName, $httpVars, $fileVars, &$action = null){
+        $actionName = AJXP_Utils::sanitize($actionName, AJXP_SANITIZE_EMAILCHARS);
         if($actionName == "cross_copy"){
             $pService = AJXP_PluginsService::getInstance();
             $actives = $pService->getActivePlugins();
@@ -233,6 +256,9 @@ class AJXP_Controller{
         }
 		
 		if($captureCalls !== false){
+            // Make sure the ShutdownScheduler has its own OB started BEFORE, as it will presumabily be
+            // executed AFTER the end of this one.
+            AJXP_ShutdownScheduler::getInstance();
 			ob_start();
 			$params = array("pre_processor_results" => array(), "post_processor_results" => array());
 		}

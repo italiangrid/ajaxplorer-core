@@ -1,21 +1,21 @@
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 /**
@@ -39,7 +39,39 @@ Class.create("Breadcrumb", {
             if(Object.isString(newNode)){
                 newNode = new AjxpNode(newNode);
             }
-            var newPath = newNode.getPath();
+//            var newPath = newNode.getPath();
+  
+          /******** MODIFICATO DA NOI ************/
+//        	var pippo = getUrlVars()["repository_id"];
+	        var repo = ajaxplorer.user.getActiveRepository();
+	        var ele1 = document.getElementById("vo_chooser_form");
+	        var ele2 = document.getElementById("vo_chooser");
+	        var ele3 = document.getElementById("patch");	
+	        var cookies = GetCookie("vo_cookie");
+		    var n=cookies.match(/---/g);
+	        if (n != null && repo==repo_code){
+	                ele1.style.display = "block";
+	                ele2.style.display = "block";
+	                ele3.style.display = "block";
+	        } else {
+	                ele1.style.display = "none";
+	                ele2.style.display = "none";
+	                ele3.style.display = "none";
+	        }    
+	 	 	if(repo==repo_code){
+	 			var path_right = newNode.getMetadata().get("path_right");
+	 			var home = GetCookie('home');
+		 		if(typeof path_right==="undefined" || GetCookie('vo_changed')=="true"){
+	            var newPath = home;
+		 	        }else{
+		            var newPath = path_right;
+		        }
+	 		} else {
+		 		var newPath = newNode.getPath();
+	 		} 	
+			
+		   /******** FINE MODIFICA ************/
+            
             var parts = $H();
             var crtPath = "";
             $A(newPath.split("/")).each(function(element){
@@ -47,6 +79,91 @@ Class.create("Breadcrumb", {
                 crtPath += "/" + element;
                 parts.set(crtPath, element);
             });
+            
+            
+            
+            	       /******** MODIFICATO DA NOI ************/
+	
+	        if(repo==repo_code){
+				var clickPath = "";
+			} else {
+				var clickPath = "<span class='icon-home ajxp-goto' data-goTo='/' title='"+MessageHash[459]+"'></span>";
+			}
+	        var lastValue = parts.values().last();
+			if(repo==repo_code){  
+			var i=0;
+			 parts.each(function(pair){
+			    var refresh = '';
+			    if(i==parts.values().length-1){
+			        refresh = '<span class="icon-refresh ajxp-goto-refresh" data-goTo="'+pair.key+'" title="'+MessageHash[149]+'"></span>';
+			    }  
+			    if (i==0) {
+			        clickPath += "<span class='icon-chevron-right'></span>" + "<span >"+pair.value+refresh+"</span>";
+			    } else {
+			        clickPath += "<span class='icon-chevron-right'></span>" + "<span class='ajxp-goto' data-goTo='"+pair.key+"'>"+pair.value+refresh+"</span>";                
+			    }                        
+			    i++;
+			 });
+			} else {
+			  parts.each(function(pair){
+			    var refresh = '';
+			    if(pair.value == lastValue){
+			        refresh = '<span class="icon-refresh ajxp-goto-refresh" title="'+MessageHash[149]+'"></span>';
+			    }
+			    clickPath += "<span class='icon-chevron-right'></span>" + "<span class='ajxp-goto' data-goTo='"+pair.key+"'>"+pair.value+refresh+"</span>";
+			});
+			}      
+	                            
+	        this.element.update("<div class='inner_bread'>" + clickPath + "</div>");
+	        
+	        if(repo!=repo_code){
+		        this.element.select("span.ajxp-goto").invoke("observe", "click", function(event){
+	                "use strict";
+	                var target = event.target.getAttribute("data-goTo");
+	                event.target.setAttribute("title", "Go to " + target);
+	                if(event.target.down('span.ajxp-goto-refresh')){
+	                    window.ajaxplorer.fireContextRefresh();
+	                }else{
+	                    window.ajaxplorer.goTo(target);
+	                }
+	            });
+	        } else {
+		        this.element.select("span.ajxp-goto").invoke("observe", "click", function(event){
+	            "use strict";
+	         	var target = event.target.getAttribute("data-goTo");                
+	            event.target.setAttribute("title", "Go to " + target);
+	            if(event.target.down('span.ajxp-goto-refresh')){
+	                window.ajaxplorer.fireContextRefresh();
+	            }else{    
+	                if(home.substring(0,target.length)==target){
+			             document.cookie = "home="+escape(target)+";expires=3600;secure"; 
+			             var target2="/";
+			             if (home!=target) {
+				            window.ajaxplorer.goTo(target2);
+				            window.ajaxplorer.fireContextRefresh();
+			             } else {
+					     	window.ajaxplorer.goTo(target2);
+					     }
+	                } else {
+		                var target2=target.replace(home,"")+"/";
+		                window.ajaxplorer.goTo(target2);
+	                }
+	             }  	               
+		    });    
+	        }
+	        if(GetCookie('home_changed')=='true'){
+	            	delete_cookie('home_changed');
+	        }
+	        if(GetCookie('vo_changed')=='true'){
+	            	delete_cookie('vo_changed');
+	        }       
+        }.bind(this) );            
+    },
+
+      /******** FINE MODIFICA ************/	
+            
+            
+/*            
             if(getBaseName(newPath) != newNode.getLabel()){
                 parts.set(newPath, newNode.getLabel());
             }
@@ -75,6 +192,8 @@ Class.create("Breadcrumb", {
 
         }.bind(this) );
 	},
+
+*/
 
 	/**
 	 * Resize widget

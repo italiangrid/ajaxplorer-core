@@ -1,22 +1,22 @@
 <?php
 /*
- * Copyright 2007-2011 Charles du Jeu <contact (at) cdujeu.me>
- * This file is part of AjaXplorer.
+ * Copyright 2007-2013 Charles du Jeu - Abstrium SAS <team (at) pyd.io>
+ * This file is part of Pydio.
  *
- * AjaXplorer is free software: you can redistribute it and/or modify
+ * Pydio is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AjaXplorer is distributed in the hope that it will be useful,
+ * Pydio is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with AjaXplorer.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Pydio.  If not, see <http://www.gnu.org/licenses/>.
  *
- * The latest code can be found at <http://www.ajaxplorer.info/>.
+ * The latest code can be found at <http://pyd.io/>.
  */
 
 defined('AJXP_EXEC') or die( 'Access not allowed');
@@ -144,9 +144,19 @@ class ShareCenter extends AJXP_Plugin{
                     }
                     print($url);
             	}else{
-                    if(!isSet($httpVars["downloadlimit"])){
-                        $httpVars["downloadlimit"] = 0;
+                    $maxdownload = intval($this->getFilteredOption("FILE_MAX_DOWNLOAD", $this->repository->getId()));
+                    if(!empty($httpVars["downloadlimit"])){
+                        if(!empty($maxdownload)) $httpVars["downloadlimit"] = min($maxdownload, intval($httpVars["downloadlimit"]));
+                    }else{
+                        if(!empty($maxdownload)) $httpVars["downloadlimit"] = $maxdownload;
                     }
+                    $maxexpiration = intval($this->getFilteredOption("FILE_MAX_EXPIRATION", $this->repository->getId()));
+                    if(!empty($httpVars["expiration"])){
+                        if(!empty($maxexpiration)) $httpVars["expiration"] = min($maxexpiration, intval($httpVars["expiration"]));
+                    }else{
+                        if(!empty($maxexpiration)) $httpVars["expiration"] = $maxexpiration;
+                    }
+
 	                $data = $this->accessDriver->makePublicletOptions($file, $httpVars["password"], $httpVars["expiration"], $httpVars["downloadlimit"], $this->repository);
                     $customData = array();
                     foreach($httpVars as $key => $value){
@@ -172,7 +182,8 @@ class ShareCenter extends AJXP_Plugin{
                     );
                 }
                 AJXP_Controller::applyHook("msg.instant", array("<reload_shared_elements/>", ConfService::getRepository()->getId()));
-
+                // as the result can be quite small (e.g error code), make sure it's output in case of OB active.
+                flush();
 
                 break;
 
@@ -258,7 +269,11 @@ class ShareCenter extends AJXP_Plugin{
                             $repoId = $minisiteData["REPOSITORY"];
                             $minisiteIsPublic = isSet($minisiteData["PRELOG_USER"]);
                             $dlDisabled = isSet($minisiteData["DOWNLOAD_DISABLED"]);
-                            $minisiteLink = $this->buildPublicletLink($metadata["element"]);
+                            if(isSet($metadata["short_form_url"])){
+                                $minisiteLink = $metadata["short_form_url"];
+                            }else{
+                                $minisiteLink = $this->buildPublicletLink($metadata["element"]);
+                            }
                         }else{
                             $repoId = $metadata["element"];
                         }
@@ -278,6 +293,7 @@ class ShareCenter extends AJXP_Plugin{
                         $jsonData = array(
                             "repositoryId"  => $repoId,
                             "label"         => $repo->getDisplay(),
+                            "description"   => $repo->getDescription(),
                             "entries"       => $sharedEntries,
                             "element_watch" => $elementWatch,
                             "repository_url"=> AJXP_Utils::detectServerURL(true)."?goto=". $repo->getSlug() ."/"
@@ -468,7 +484,7 @@ class ShareCenter extends AJXP_Plugin{
      * @return string
      */
     public function computeHash($outputData, $checkInFolder = null){
-        $length = $this->pluginConf["HASH_MIN_LENGTH"];
+        $length = $this->getFilteredOption("HASH_MIN_LENGTH", $this->repository->getId());
         $full =  md5($outputData);
         $starter = substr($full, 0, $length);
         if($checkInFolder != null){
@@ -506,13 +522,13 @@ class ShareCenter extends AJXP_Plugin{
 
     function computeMinisiteToServerURL(){
         $minisite = parse_url($this->buildPublicDlURL(), PHP_URL_PATH) ."/a.php";
-        $server   = parse_url( AJXP_Utils::detectServerURL(), PHP_URL_PATH) . dirname($_SERVER['REQUEST_URI']);
+        $server = rtrim(parse_url( AJXP_Utils::detectServerURL(true), PHP_URL_PATH), "/");
         return AJXP_Utils::getTravelPath($minisite, $server);
     }
 
     function buildPublicletLink($hash){
         $addLang = ConfService::getLanguage() != ConfService::getCoreConf("DEFAULT_LANGUAGE");
-        if($this->pluginConf["USE_REWRITE_RULE"] == true){
+        if($this->getFilteredOption("USE_REWRITE_RULE", $this->repository->getId()) == true){
             if($addLang) return $this->buildPublicDlURL()."/".$hash."-".ConfService::getLanguage();
             else return $this->buildPublicDlURL()."/".$hash;
         }else{
@@ -545,7 +561,7 @@ class ShareCenter extends AJXP_Plugin{
         @copy(AJXP_INSTALL_PATH."/server/index.html", $downloadFolder."/index.html");
         $dlUrl = $this->buildPublicDlURL();
         $htaccessContent = "ErrorDocument 404 ".$dlUrl."/404.html\n<Files \".ajxp_*\">\ndeny from all\n</Files>";
-        if($this->pluginConf["USE_REWRITE_RULE"] == true){
+        if($this->getFilteredOption("USE_REWRITE_RULE", $this->repository->getId()) == true){
             $path = parse_url($dlUrl, PHP_URL_PATH);
             $htaccessContent .= '
             <IfModule mod_rewrite.c>
@@ -553,8 +569,8 @@ class ShareCenter extends AJXP_Plugin{
             RewriteBase '.$path.'
             RewriteCond %{REQUEST_FILENAME} !-f
             RewriteCond %{REQUEST_FILENAME} !-d
-            RewriteRule ^([a-z0-9]+)-([a-z]+)$ $1.php?lang=$2 [L]
-            RewriteRule ^([a-z0-9]+)$ $1.php [L]
+            RewriteRule ^([a-z0-9]+)-([a-z]+)$ $1.php?lang=$2 [QSA]
+            RewriteRule ^([a-z0-9]+)$ $1.php [QSA]
             </IfModule>
             ';
         }
@@ -567,19 +583,34 @@ class ShareCenter extends AJXP_Plugin{
 
     static function loadMinisite($data){
         $repository = $data["REPOSITORY"];
+        AJXP_PluginsService::getInstance()->initActivePlugins();
         $html = file_get_contents(AJXP_INSTALL_PATH."/".AJXP_PLUGINS_FOLDER."/action.share/res/minisite.php");
+        AJXP_Controller::applyHook("tpl.filter_html", array(&$html));
+        $html = AJXP_XMLWriter::replaceAjxpXmlKeywords($html);
         $html = str_replace("AJXP_START_REPOSITORY", $repository, $html);
         $html = str_replace("AJXP_REPOSITORY_LABEL", ConfService::getRepositoryById($repository)->getDisplay(), $html);
+        session_name("AjaXplorer_Shared");
+        session_start();
         if(!empty($data["PRELOG_USER"])){
-            session_name("AjaXplorer");
-            session_start();
             AuthService::logUser($data["PRELOG_USER"], "", true);
             $html = str_replace("AJXP_PRELOGED_USER", "ajxp_preloged_user", $html);
         }else{
+            $_SESSION["PENDING_REPOSITORY_ID"] = $repository;
+            $_SESSION["PENDING_FOLDER"] = "/";
             $html = str_replace("AJXP_PRELOGED_USER", "", $html);
         }
+        if(isSet($_GET["lang"])) {
+            $loggedUser = &AuthService::getLoggedUser();
+            if($loggedUser != null){
+                $loggedUser->setPref("lang", $_GET["lang"]);
+            }else{
+                setcookie("AJXP_lang", $_GET["lang"]);
+            }
+        }
+
         $tPath = (!empty($data["TRAVEL_PATH_TO_ROOT"]) ? $data["TRAVEL_PATH_TO_ROOT"] : "../..");
         $html = str_replace("AJXP_PATH_TO_ROOT", $tPath, $html);
+        HTMLWriter::internetExplorerMainDocumentHeader();
         HTMLWriter::charsetHeader();
         echo($html);
     }
@@ -594,12 +625,15 @@ class ShareCenter extends AJXP_Plugin{
         // create driver from $data
         $className = $data["DRIVER"]."AccessDriver";
         $hash = md5(serialize($data));
+        $u = parse_url($_SERVER["REQUEST_URI"]);
+        $shortHash = pathinfo(basename($u["path"]), PATHINFO_FILENAME);
+
         if ( ($data["EXPIRE_TIME"] && time() > $data["EXPIRE_TIME"]) || 
-            ($data["DOWNLOAD_LIMIT"] && $data["DOWNLOAD_LIMIT"]> 0 && $data["DOWNLOAD_LIMIT"] <= PublicletCounter::getCount($hash)) )
+            ($data["DOWNLOAD_LIMIT"] && $data["DOWNLOAD_LIMIT"]> 0 && $data["DOWNLOAD_LIMIT"] <= PublicletCounter::getCount($shortHash)) )
         {
             // Remove the publiclet, it's done
             if (strstr(realpath($_SERVER["SCRIPT_FILENAME"]),realpath(ConfService::getCoreConf("PUBLIC_DOWNLOAD_FOLDER"))) !== FALSE){
-		        PublicletCounter::delete($hash);
+		        PublicletCounter::delete($shortHash);
                 unlink($_SERVER["SCRIPT_FILENAME"]);
             }
 
@@ -623,23 +657,29 @@ class ShareCenter extends AJXP_Plugin{
         $AJXP_LINK_BASENAME = SystemTextEncoding::toUTF8(basename($data["FILE_PATH"]));
         $customs = array("title", "legend", "legend_pass", "background_attributes_1", "background_attributes_2", "background_attributes_3", "text_color", "background_color", "textshadow_color");
         $images = array("button", "background_1", "background_2", "background_3");
-        AJXP_PluginsService::getInstance()->initActivePlugins();
         $shareCenter = AJXP_PluginsService::findPlugin("action", "share");
         $confs = $shareCenter->getConfigs();
         foreach($customs as $custom){
             $varName = "CUSTOM_SHAREPAGE_".strtoupper($custom);
             $$varName = $confs[$varName];
         }
+        $dlFolder = realpath(ConfService::getCoreConf("PUBLIC_DOWNLOAD_FOLDER"));
         foreach($images as $custom){
             $varName = "CUSTOM_SHAREPAGE_".strtoupper($custom);
             if(!empty($confs[$varName])){
-                $$varName = "binary-".$confs[$varName];
-                $dlFolder = realpath(ConfService::getCoreConf("PUBLIC_DOWNLOAD_FOLDER"));
-                if(is_file($dlFolder."/binary-".$confs[$varName])) continue;
-                $copiedImageName = $dlFolder."/binary-".$confs[$varName];
-                $imgFile = fopen($copiedImageName, "wb");
-                ConfService::getConfStorageImpl()->loadBinary(array(), $confs[$varName], $imgFile);
-                fclose($imgFile);
+                if(strpos($confs[$varName], "plugins/") === 0 && is_file(AJXP_INSTALL_PATH."/".$confs[$varName])){
+                    $realFile = AJXP_INSTALL_PATH."/".$confs[$varName];
+                    copy($realFile, $dlFolder."/binary-".basename($realFile));
+                    $$varName = "binary-".basename($realFile);
+                }else{
+                    $$varName = "binary-".$confs[$varName];
+                    if(is_file($dlFolder."/binary-".$confs[$varName])) continue;
+                    $copiedImageName = $dlFolder."/binary-".$confs[$varName];
+                    $imgFile = fopen($copiedImageName, "wb");
+                    ConfService::getConfStorageImpl()->loadBinary(array(), $confs[$varName], $imgFile);
+                    fclose($imgFile);
+                }
+
             }
         }
 
@@ -649,16 +689,22 @@ class ShareCenter extends AJXP_Plugin{
         {
             if (!isSet($_POST['password']) || ($_POST['password'] != $data["PASSWORD"]))
             {
+                AJXP_PluginsService::getInstance()->initActivePlugins();
                 $AJXP_LINK_HAS_PASSWORD = true;
                 $AJXP_LINK_WRONG_PASSWORD = (isSet($_POST['password']) && ($_POST['password'] != $data["PASSWORD"]));
                 include (AJXP_INSTALL_PATH."/plugins/action.share/res/public_links.php");
-                echo('<div style="position: absolute;z-index: 10000; bottom: 0; right: 0; color: #666;font-family: HelveticaNeue-Light,Helvetica Neue Light,Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size: 13px;text-align: right;padding: 6px; line-height: 20px;text-shadow: 0px 1px 0px white;" class="no_select_bg"><br>Build your own box with AjaXplorer : <a style="color: #000000;" target="_blank" href="http://ajaxplorer.info/">http://ajaxplorer.info/</a><br/>Community - Free non supported version © C. du Jeu 2008-2013 </div>');
+                $res = ('<div style="position: absolute;z-index: 10000; bottom: 0; right: 0; color: #666;font-family: HelveticaNeue-Light,Helvetica Neue Light,Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size: 13px;text-align: right;padding: 6px; line-height: 20px;text-shadow: 0px 1px 0px white;" class="no_select_bg"><br>Build your own box with Pydio : <a style="color: #000000;" target="_blank" href="http://pyd.io/">http://pyd.io/</a><br/>Community - Free non supported version &copy; Abstrium / C. du Jeu 2008-2013 </div>');
+                AJXP_Controller::applyHook("tpl.filter_html", array(&$res));
+                echo($res);
                 return;
             }
         }else{
             if (!isSet($_GET["dl"])){
+                AJXP_PluginsService::getInstance()->initActivePlugins();
                 include (AJXP_INSTALL_PATH."/plugins/action.share/res/public_links.php");
-                echo('<div style="position: absolute;z-index: 10000; bottom: 0; right: 0; color: #666;font-family: HelveticaNeue-Light,Helvetica Neue Light,Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size: 13px;text-align: right;padding: 6px; line-height: 20px;text-shadow: 0px 1px 0px white;" class="no_select_bg"><br>Build your own box with AjaXplorer : <a style="color: #000000;" target="_blank" href="http://ajaxplorer.info/">http://ajaxplorer.info/</a><br/>Community - Free non supported version © C. du Jeu 2008-2013 </div>');
+                $res = '<div style="position: absolute;z-index: 10000; bottom: 0; right: 0; color: #666;font-family: HelveticaNeue-Light,Helvetica Neue Light,Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size: 13px;text-align: right;padding: 6px; line-height: 20px;text-shadow: 0px 1px 0px white;" class="no_select_bg"><br>Build your own box with Pydio : <a style="color: #000000;" target="_blank" href="http://pyd.io/">http://pyd.io/</a><br/>Community - Free non supported version &copy; Abstrium / C. du Jeu 2008-2013 </div>';
+                AJXP_Controller::applyHook("tpl.filter_html", array(&$res));
+                echo($res);
                 return;
             }
         }
@@ -670,11 +716,11 @@ class ShareCenter extends AJXP_Plugin{
         $driver = new $className($data["PLUGIN_ID"], $data["BASE_DIR"]);
         $driver->loadManifest();
 
-        $hash = md5(serialize($data));
-        PublicletCounter::increment($hash);
+        //$hash = md5(serialize($data));
+        PublicletCounter::increment($shortHash);
 
         //AuthService::logUser($data["OWNER_ID"], "", true);
-        AuthService::logTemporaryUser($data["OWNER_ID"], $hash);
+        AuthService::logTemporaryUser($data["OWNER_ID"], $shortHash);
         if($driver->hasMixin("credentials_consumer") && isSet($data["SAFE_USER"]) && isSet($data["SAFE_PASS"])){
             // FORCE SESSION MODE
             AJXP_Safe::getInstance()->forceSessionCredentialsUsage();
@@ -706,9 +752,9 @@ class ShareCenter extends AJXP_Plugin{
                 }
             }
             AJXP_Controller::findActionAndApply($data["ACTION"], $params, null);
-            register_shutdown_function(array("AuthService", "clearTemporaryUser"), $hash);
+            register_shutdown_function(array("AuthService", "clearTemporaryUser"), $shortHash);
         }catch (Exception $e){
-            AuthService::clearTemporaryUser($hash);
+            AuthService::clearTemporaryUser($shortHash);
         	die($e->getMessage());
         }
     }
@@ -797,8 +843,9 @@ class ShareCenter extends AJXP_Plugin{
         if(isSet($httpVars["create_guest_user"])){
             // Create a guest user
             $userId = substr(md5(time()), 0, 12);
-            if(!empty($this->pluginConf["SHARED_USERS_TMP_PREFIX"])){
-                $userId = $this->pluginConf["SHARED_USERS_TMP_PREFIX"].$userId;
+            $pref = $this->getFilteredOption("SHARED_USERS_TMP_PREFIX", $this->repository->getId());
+            if(!empty($pref)){
+                $userId = $pref.$userId;
             }
             $userPass = substr(md5(time()), 13, 24);
             $httpVars["user_0"] = $userId;
@@ -885,6 +932,7 @@ class ShareCenter extends AJXP_Plugin{
         $groups = array();
 
         $index = 0;
+        $prefix = $this->getFilteredOption("SHARED_USERS_TMP_PREFIX", $this->repository->getId());
         while(isSet($httpVars["user_".$index])){
             $eType = $httpVars["entry_type_".$index];
             $rightString = ($httpVars["right_read_".$index]=="true"?"r":"").($httpVars["right_write_".$index]=="true"?"w":"");
@@ -895,14 +943,15 @@ class ShareCenter extends AJXP_Plugin{
             }
             if($eType == "user"){
                 $u = AJXP_Utils::decodeSecureMagic($httpVars["user_".$index], AJXP_SANITIZE_ALPHANUM);
-                if(!AuthService::userExists($u, "w") && !isSet($httpVars["user_pass_".$index])){
-                    return 100;
-                }else if(AuthService::userExists($u, "w") && isSet($httpVars["user_pass_".$index])){
+                if(!AuthService::userExists($u) && !isSet($httpVars["user_pass_".$index])){
+                    $index++;
+                    continue;
+                }else if(AuthService::userExists($u) && isSet($httpVars["user_pass_".$index])){
                     throw new Exception("User $u already exists, please choose another name.");
                 }
-                if(!AuthService::userExists($u, "w") && !empty($this->pluginConf["SHARED_USERS_TMP_PREFIX"])
-                && strpos($u, $this->pluginConf["SHARED_USERS_TMP_PREFIX"])!==0 ){
-                    $u = $this->pluginConf["SHARED_USERS_TMP_PREFIX"] . $u;
+                if(!AuthService::userExists($u, "w") && !empty($prefix)
+                && strpos($u, $prefix)!==0 ){
+                    $u = $prefix . $u;
                 }
                 $users[] = $u;
             }else{
@@ -918,12 +967,13 @@ class ShareCenter extends AJXP_Plugin{
         }
 
 		$label = AJXP_Utils::decodeSecureMagic($httpVars["repo_label"]);
+		$description = AJXP_Utils::decodeSecureMagic($httpVars["repo_description"]);
         if(isSet($httpVars["repository_id"])){
             $editingRepo = ConfService::getRepositoryById($httpVars["repository_id"]);
         }
 
 		// CHECK USER & REPO DOES NOT ALREADY EXISTS
-        if($this->pluginConf["AVOID_SHARED_FOLDER_SAME_LABEL"]){
+        if( $this->getFilteredOption("AVOID_SHARED_FOLDER_SAME_LABEL", $this->repository->getId()) == true) {
             $repos = ConfService::getRepositoriesList();
             foreach ($repos as $obj){
                 if($obj->getDisplay() == $label && (!isSet($editingRepo) || $editingRepo != $obj)){
@@ -934,7 +984,7 @@ class ShareCenter extends AJXP_Plugin{
 
 		$confDriver = ConfService::getConfStorageImpl();
         foreach($users as $userName){
-            if(AuthService::userExists($userName, "w")){
+            if(AuthService::userExists($userName)){
                 // check that it's a child user
                 $userObject = $confDriver->createUserObject($userName);
                 if( ConfService::getCoreConf("ALLOW_CROSSUSERS_SHARING", "conf") != true && ( !$userObject->hasParent() || $userObject->getParent() != $loggedUser->id ) ){
@@ -965,6 +1015,7 @@ class ShareCenter extends AJXP_Plugin{
                 $newRepo->setDisplay($label);
                 ConfService::replaceRepository($httpVars["repository_id"], $newRepo);
             }
+            $editingRepo->setDescription($description);
         }else{
             if($repository->getOption("META_SOURCES")){
                 $options["META_SOURCES"] = $repository->getOption("META_SOURCES");
@@ -985,6 +1036,7 @@ class ShareCenter extends AJXP_Plugin{
             if(!empty($gPath)){
                 $newRepo->setGroupPath($gPath);
             }
+            $newRepo->setDescription($description);
             ConfService::addRepository($newRepo);
         }
 
