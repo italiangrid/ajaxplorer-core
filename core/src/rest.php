@@ -2,9 +2,9 @@
 
 die("This is experimental! You must set an API KEY & SECRET to enable Basic Http Auth");
 
-define("AJXP_API_LOGIN", "admin");
-define("AJXP_API_PASSWORD", "123456");
-define("AJXP_API_USER", "admin");
+define("AJXP_API_LOGIN", "******");
+define("AJXP_API_PASSWORD", "*******");
+define("AJXP_API_USER", "******");
 
 if (!isset($_SERVER['PHP_AUTH_USER'])  || $_SERVER["PHP_AUTH_USER"] != AJXP_API_LOGIN || $_SERVER["PHP_AUTH_PW"] != AJXP_API_PASSWORD ) {
     header('WWW-Authenticate: Basic realm="AjaXplorer API Realm"');

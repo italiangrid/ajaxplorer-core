@@ -2,7 +2,7 @@
 	// Necessary to make "connection" with the glueCode
 	define("AJXP_EXEC", true);
 	$glueCode = "./plugins/auth.remote/glueCode.php";
-	$secret = "123456";
+	$secret = "*******";
 
 	// Initialize the "parameters holder"
 	global $AJXP_GLUE_GLOBALS;
